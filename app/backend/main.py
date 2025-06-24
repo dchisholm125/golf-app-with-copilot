@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body, Path
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 import mysql.connector
@@ -50,10 +50,10 @@ def create_game(game: GameCreate):
     db = get_db()
     cursor = db.cursor()
     try:
-        # Insert game
+        # Insert game with default state_json as empty object
         cursor.execute(
-            "INSERT INTO games (game_type) VALUES (%s)",
-            (game.game_type,)
+            "INSERT INTO games (game_type, is_complete, state_json) VALUES (%s, %s, %s)",
+            (game.game_type, False, json.dumps({}))
         )
         game_id = cursor.lastrowid
         logger.info(f"Inserted game with ID: {game_id}")
@@ -94,10 +94,12 @@ def update_game_state(game_id: int, state: GameStateUpdate):
     cursor = db.cursor()
     try:
         cursor.execute(
-            "UPDATE games SET current_hole = %s, state_json = %s WHERE id = %s",
+            "UPDATE games SET current_hole = %s, state_json = %s WHERE id = %s AND is_complete = FALSE",
             (state.current_hole, json.dumps(state.state_json), game_id)
         )
         db.commit()
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=400, detail="Cannot update a completed game.")
         logger.info(f"Updated state for game {game_id}")
         return {"message": "Game state updated"}
     except Exception as e:
@@ -113,7 +115,7 @@ def get_game_state(game_id: int):
     db = get_db()
     cursor = db.cursor(dictionary=True)
     try:
-        cursor.execute("SELECT current_hole, state_json FROM games WHERE id = %s", (game_id,))
+        cursor.execute("SELECT current_hole, state_json, game_type, is_complete FROM games WHERE id = %s", (game_id,))
         row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Game not found.")
@@ -121,7 +123,12 @@ def get_game_state(game_id: int):
         state_json = row['state_json']
         if state_json and isinstance(state_json, str):
             state_json = json.loads(state_json)
-        return {"current_hole": row['current_hole'], "state_json": state_json}
+        return {
+            "current_hole": row['current_hole'],
+            "state_json": state_json,
+            "game_type": row['game_type'],
+            "is_complete": row['is_complete']
+        }
     finally:
         cursor.close()
         db.close()
@@ -129,3 +136,101 @@ def get_game_state(game_id: int):
 @app.get("/")
 def read_root():
     return {"message": "Hello from FastAPI backend!"}
+
+@app.get("/users/{user_id}/games-won")
+def get_games_won(user_id: str):
+    # Dummy data for UI testing
+    return {
+        "games": [
+            {
+                "id": 1,
+                "date": "2025-06-01",
+                "type": "wolf",
+                "strokes": [4, 5, 3, 4, 5, 4, 4, 3, 5],
+                "points": [1, 2, 0, 1, 2, 1, 1, 0, 2]
+            },
+            {
+                "id": 2,
+                "date": "2025-05-20",
+                "type": "skins",
+                "strokes": [5, 4, 4, 5, 3, 4, 5, 4, 4],
+                "points": [2, 1, 1, 2, 0, 1, 2, 1, 1]
+            },
+            {
+                "id": 3,
+                "date": "2025-05-10",
+                "type": "sixsixsix",
+                "strokes": [],
+                "points": []
+            }
+        ]
+    }
+
+@app.get("/users/{user_id}/games-lost")
+def get_games_lost(user_id: str):
+    # Dummy data for UI testing
+    return {
+        "games": [
+            {
+                "id": 4,
+                "date": "2025-06-15",
+                "type": "wolf",
+                "strokes": [5, 6, 4, 5, 6, 5, 5, 4, 6],
+                "points": [0, 1, 0, 0, 1, 0, 0, 1, 0]
+            },
+            {
+                "id": 5,
+                "date": "2025-05-25",
+                "type": "skins",
+                "strokes": [6, 5, 5, 6, 4, 5, 6, 5, 5],
+                "points": [0, 0, 1, 0, 1, 0, 0, 1, 0]
+            },
+            {
+                "id": 6,
+                "date": "2025-05-12",
+                "type": "sixsixsix",
+                "strokes": [],
+                "points": []
+            }
+        ]
+    }
+
+@app.patch("/games/{game_id}/complete")
+def mark_game_complete(game_id: int):
+    db = get_db()
+    cursor = db.cursor()
+    try:
+        cursor.execute(
+            "UPDATE games SET is_complete = TRUE WHERE id = %s AND is_complete = FALSE",
+            (game_id,)
+        )
+        db.commit()
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Game not found or already complete.")
+        return {"message": f"Game {game_id} marked as complete."}
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error marking game complete: {e}")
+        raise HTTPException(status_code=500, detail="Failed to mark game as complete.")
+    finally:
+        cursor.close()
+        db.close()
+
+@app.get("/games/{game_id}/players")
+def get_game_players(game_id: int):
+    """
+    Get the list of players for a given game from the game_players table.
+    Returns: List of dicts with name, email, and user_id (if available).
+    """
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        cursor.execute(
+            "SELECT name, email, user_id FROM game_players WHERE game_id = %s",
+            (game_id,)
+        )
+        players = cursor.fetchall()
+        return players
+    finally:
+        cursor.close()
+        db.close()

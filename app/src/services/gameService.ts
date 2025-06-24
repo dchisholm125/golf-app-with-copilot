@@ -30,3 +30,13 @@ export async function createGame(data: GameCreateRequest): Promise<GameCreateRes
   const response = await axios.post('/api/games/', data)
   return response.data
 }
+
+/**
+ * Fetch the list of players for a given game from the backend.
+ * @param gameId The ID of the game
+ * @returns Array of Player objects
+ */
+export async function getPlayersForGame(gameId: number): Promise<Player[]> {
+  const response = await axios.get(`/api/games/${gameId}/players`)
+  return response.data
+}
