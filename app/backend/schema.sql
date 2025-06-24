@@ -12,7 +12,8 @@ CREATE TABLE games (
     game_type ENUM('wolf', 'skins', 'sixsixsix') NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     current_hole INT DEFAULT 0,
-    state_json JSON DEFAULT NULL
+    state_json JSON DEFAULT NULL,
+    is_complete BOOLEAN DEFAULT FALSE
     -- Optionally: status VARCHAR(50), created_by INT, FOREIGN KEY (created_by) REFERENCES users(id)
 );
 
