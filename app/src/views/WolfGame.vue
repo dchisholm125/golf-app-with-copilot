@@ -1,49 +1,38 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { loadGameState, saveGameState } from '../services/gameStateService'
-import { getPlayersForGame } from '../services/gameService'
+import { useWolfGameState } from '../composables/useWolfGameState'
+import { loadGameState } from '../services/gameStateService'
 import Scoreboard from '../components/Scoreboard.vue'
 import GameComplete from './GameComplete.vue'
-
-interface Player {
-  name: string
-  scores: number[]
-}
+import WolfPartnerSelect from '../components/WolfPartnerSelect.vue'
+import WolfTeamsSummary from '../components/WolfTeamsSummary.vue'
+import WolfHoleResult from '../components/WolfHoleResult.vue'
 
 const route = useRoute()
 const gameId = computed(() => Number(route.params.gameId))
 
-const totalHoles = ref(18)
-const players = ref<Player[]>([])
-const gameStarted = ref(false)
-const currentHole = ref(0)
-const wolfOrder = ref<number[]>([])
-const wolfPlayer = computed(() => {
-  if (
-    currentHole.value >= totalHoles.value ||
-    !players.value.length ||
-    !wolfOrder.value.length ||
-    typeof wolfOrder.value[currentHole.value] !== 'number' ||
-    typeof players.value[wolfOrder.value[currentHole.value] % players.value.length] === 'undefined'
-  ) {
-    return { name: '' }
-  }
-  return players.value[wolfOrder.value[currentHole.value] % players.value.length]
-})
-const partnerPlayer = ref<Player | null>(null)
-const nonWolfPlayers = computed(() => players.value.filter(p => p !== wolfPlayer.value && p !== partnerPlayer.value))
-const potentialPartners = ref<Player[]>([])
-const pairingComplete = ref(false)
-const loneWolf = ref(false)
-const holeWinner = ref('')
-const loading = ref(true)
-const message = ref('')
-
-const winners = computed(() => {
-  const maxScore = Math.max(...players.value.map(p => p.scores.reduce((a, b) => a + b, 0)))
-  return players.value.filter(p => p.scores.reduce((a, b) => a + b, 0) === maxScore)
-})
+// Use the composable for all state and logic
+const {
+  totalHoles,
+  players,
+  gameStarted,
+  currentHole,
+  wolfOrder,
+  wolfPlayer,
+  partnerPlayer,
+  nonWolfPlayers,
+  potentialPartners,
+  pairingComplete,
+  loneWolf,
+  holeWinner,
+  loading,
+  message,
+  startGame,
+  choosePartner,
+  goLoneWolf,
+  submitHole,
+} = useWolfGameState()
 
 // Load game state on mount
 onMounted(async () => {
@@ -105,136 +94,8 @@ onMounted(async () => {
   }
 })
 
-function startGame() {
-  // Initialize players
-  // For a new game, we can't use props, so just use the loaded state or fallback to a default
-  if (!players.value.length) {
-    // If no players loaded, create 4 default players
-    for (let i = 0; i < 4; i++) {
-      players.value.push({
-        name: `Player ${i + 1}`,
-        scores: Array(totalHoles.value).fill(0),
-      })
-    }
-  }
-  // Randomize wolf order
-  wolfOrder.value = Array.from({ length: totalHoles.value }, (_, i) => i % players.value.length)
-  for (let i = wolfOrder.value.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[wolfOrder.value[i], wolfOrder.value[j]] = [wolfOrder.value[j], wolfOrder.value[i]]
-  }
-  currentHole.value = 0
-  pairingComplete.value = false
-  loneWolf.value = false
-  partnerPlayer.value = null
-  potentialPartners.value = players.value.filter(p => p !== wolfPlayer.value)
-  gameStarted.value = true
-  holeWinner.value = ''
-}
-
-function choosePartner(partner: Player) {
-  partnerPlayer.value = partner
-  pairingComplete.value = true
-}
-
-function skipPartner() {
-  potentialPartners.value.shift()
-}
-
-function goLoneWolf() {
-  loneWolf.value = true
-  partnerPlayer.value = null
-  pairingComplete.value = true
-}
-
-function autoPair() {
-  // If only one left, auto-pair
-  if (potentialPartners.value.length === 1) {
-    partnerPlayer.value = potentialPartners.value[0]
-    pairingComplete.value = true
-  }
-}
-
-function submitHole() {
-  // Scoring logic
-  if (!pairingComplete.value) return
-  const wolf = wolfPlayer.value as Player
-  // Debug: log player scores before scoring
-  console.log('Before scoring:', JSON.parse(JSON.stringify(players.value)))
-  // Lone Wolf: wolf gets 2 if wins, else all others get 1
-  if (loneWolf.value) {
-    if (holeWinner.value === wolf.name && Array.isArray(wolf.scores)) {
-      wolf.scores[currentHole.value] = 2
-      players.value.forEach(p => {
-        if (p !== wolf) p.scores[currentHole.value] = 0
-      })
-    } else {
-      players.value.forEach(p => {
-        if (p !== wolf) p.scores[currentHole.value] = 1
-        else p.scores[currentHole.value] = 0
-      })
-    }
-  } else {
-    // Partnered: wolf+partner get 2 if win, else others get 2
-    if ((holeWinner.value === wolf.name || holeWinner.value === partnerPlayer.value?.name) && Array.isArray(wolf.scores) && partnerPlayer.value && Array.isArray(partnerPlayer.value.scores)) {
-      wolf.scores[currentHole.value] = 2
-      partnerPlayer.value.scores[currentHole.value] = 2
-      players.value.forEach(p => {
-        if (p !== wolf && p !== partnerPlayer.value) p.scores[currentHole.value] = 0
-      })
-    } else {
-      players.value.forEach(p => {
-        if (p !== wolf && p !== partnerPlayer.value) p.scores[currentHole.value] = 2
-        else p.scores[currentHole.value] = 0
-      })
-    }
-  }
-  // Debug: log player scores after scoring
-  console.log('After scoring:', JSON.parse(JSON.stringify(players.value)))
-  // Next hole
-  if (currentHole.value < totalHoles.value - 1) {
-    currentHole.value++
-    pairingComplete.value = false
-    loneWolf.value = false
-    partnerPlayer.value = null
-    potentialPartners.value = players.value.filter(p => p !== wolfPlayer.value)
-    holeWinner.value = ''
-  } else {
-    // Game complete! Optionally, trigger a modal or route to GameComplete
-    currentHole.value++
-  }
-  // Debug: log state before saving
-  console.log('Saving state:', {
-    current_hole: currentHole.value,
-    state_json: {
-      players: players.value,
-      currentHole: currentHole.value,
-      wolfOrder: wolfOrder.value,
-      numHoles: totalHoles.value,
-      loneWolf: loneWolf.value,
-      pairingComplete: pairingComplete.value,
-      partnerPlayer: partnerPlayer.value,
-      potentialPartners: potentialPartners.value,
-      holeWinner: holeWinner.value,
-      gameStarted: gameStarted.value,
-    }
-  })
-  // Save state after each hole (now after increment)
-  saveGameState(gameId.value, {
-    current_hole: currentHole.value,
-    state_json: {
-      players: players.value,
-      currentHole: currentHole.value,
-      wolfOrder: wolfOrder.value,
-      numHoles: totalHoles.value,
-      loneWolf: loneWolf.value,
-      pairingComplete: pairingComplete.value,
-      partnerPlayer: partnerPlayer.value,
-      potentialPartners: potentialPartners.value,
-      holeWinner: holeWinner.value,
-      gameStarted: gameStarted.value,
-    }
-  })
+function getPlayersForGame(value: number): any[] | PromiseLike<any[]> {
+  throw new Error('Function not implemented.')
 }
 </script>
 
@@ -246,7 +107,9 @@ function submitHole() {
     </div>
     <div v-else>
       <div class="mb-2 text-muted">
-        Debug: currentHole = {{ currentHole }}, holesPlayed = {{ currentHole }}
+        Debug: currentHole = {{ currentHole }}, 
+        holesPlayed = {{ currentHole }}, 
+        wolfPlayer = {{ wolfPlayer.name }}, 
       </div>
       <div v-if="message" class="alert alert-danger">{{ message }}</div>
       <div v-if="!gameStarted">
@@ -260,38 +123,29 @@ function submitHole() {
             <strong>Wolf for this hole:</strong> {{ wolfPlayer.name }}
           </div>
           <div v-if="!pairingComplete">
-            <div class="mb-3">
-              <p>Choose a partner for <strong>{{ wolfPlayer.name }}</strong> or go Lone Wolf:</p>
-              <div class="player-tile-grid">
-                <button
-                  v-for="partner in players.filter(p => p !== wolfPlayer)"
-                  :key="partner.name"
-                  class="btn btn-outline-success btn-sm mt-2"
-                  @click="choosePartner(partner)"
-                >
-                  <span class="fw-bold">{{ partner.name }}</span>
-              </button>
-              </div>
-            </div>
-            <button class="btn btn-warning me-2" @click="goLoneWolf">Go Lone Wolf</button>
+            <WolfPartnerSelect
+              :players="players"
+              :wolfPlayer="wolfPlayer"
+              @choose-partner="choosePartner"
+              @go-lone-wolf="goLoneWolf"
+            />
           </div>
           <div v-else>
-            <div v-if="loneWolf">
-              <p><strong>{{ wolfPlayer.name }}</strong> is going <span class="text-danger">Lone Wolf</span>!</p>
-              <p>Teams: <strong>{{ wolfPlayer.name }}</strong> vs {{ nonWolfPlayers.map(p => p.name).join(', ') }}</p>
-            </div>
-            <div v-else>
-              <p>Teams: <strong>{{ wolfPlayer.name }}</strong><span v-if="partnerPlayer"> + {{ partnerPlayer.name }}</span> vs {{ nonWolfPlayers.map(p => p.name).join(', ') }}</p>
-            </div>
-            <div class="mb-2">
-              <label class="form-label">Who won the hole?</label>
-              <select v-model="holeWinner" class="form-select" style="max-width: 300px;">
-                <option :value="wolfPlayer.name">Wolf{{ loneWolf ? ' (Lone Wolf)' : (partnerPlayer ? ' + Partner' : '') }}</option>
-                <option v-if="loneWolf" :value="'Team'">Team of 3</option>
-                <option v-else :value="'OtherTeam'">Other Team</option>
-              </select>
-            </div>
-            <button class="btn btn-success me-2" @click="submitHole">Submit Hole</button>
+            <WolfTeamsSummary
+              :wolfPlayer="wolfPlayer"
+              :partnerPlayer="partnerPlayer"
+              :nonWolfPlayers="nonWolfPlayers"
+              :loneWolf="loneWolf"
+            />
+            <WolfHoleResult
+              :wolfPlayer="wolfPlayer"
+              :partnerPlayer="partnerPlayer"
+              :nonWolfPlayers="nonWolfPlayers"
+              :loneWolf="loneWolf"
+              :holeWinner="holeWinner"
+              @update:holeWinner="val => holeWinner = val"
+              @submit-hole="submitHole"
+            />
           </div>
           <div class="mt-4">
             <h6>Scoreboard</h6>
