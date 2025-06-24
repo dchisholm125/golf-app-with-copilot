@@ -16,7 +16,7 @@ This is the backend service for the Golf App, built with FastAPI.
    ```
 2. Install dependencies:
    ```bash
-   pip install fastapi uvicorn[standard]
+   pip install fastapi uvicorn[standard] mysql-connector-python
    ```
 3. Run the server:
    ```bash
@@ -29,6 +29,11 @@ This is the backend service for the Golf App, built with FastAPI.
 ## Stripe Integration (Planned)
 - Stripe will be used for secure payment processing.
 - Payment logic will be modular and PCI-compliant, with no raw card data handled by the backend.
+
+## Database (MySQL)
+- MySQL will be used to persist user, game, and statistics data.
+- FastAPI will serve as the backend API between the UI and the database.
+- Database connection and models will be documented here as they are added.
 
 ---
 

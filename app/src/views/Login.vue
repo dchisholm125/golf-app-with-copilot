@@ -1,15 +1,15 @@
+<script setup lang="ts">
+import { useAuth0 } from '@auth0/auth0-vue'
+
+const { loginWithRedirect } = useAuth0()
+</script>
+
 <template>
   <div class="login-container">
     <h2>Login</h2>
     <button @click="loginWithRedirect">Log In with Auth0</button>
   </div>
 </template>
-
-<script setup lang="ts">
-import { useAuth0 } from '@auth0/auth0-vue'
-
-const { loginWithRedirect } = useAuth0()
-</script>
 
 <style scoped>
 .login-container {

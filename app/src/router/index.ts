@@ -1,15 +1,50 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, type RouteLocationNormalized } from 'vue-router'
 import Login from '../views/Login.vue'
-// Add more routes as needed
+import Profile from '../views/Profile.vue'
+import GameSelect from '../views/GameSelect.vue'
+import WolfGame from '../views/WolfGame.vue'
+// import SkinsGame from '../views/SkinsGame.vue' // To be created
+// import SixSixSixGame from '../views/SixSixSixGame.vue' // To be created
+import { useAuth0 } from '@auth0/auth0-vue'
+import { watch } from 'vue'
 
 const routes = [
-  { path: '/', name: 'Login', component: Login },
-  // { path: '/', ... } // Add home/dashboard route later
+  { path: '/login', name: 'Login', component: Login },
+  { path: '/', name: 'Profile', component: Profile, meta: { requiresAuth: true } },
+  { path: '/game-select', name: 'GameSelect', component: GameSelect, meta: { requiresAuth: true } },
+  { path: '/wolf/:gameId', name: 'WolfGame', component: WolfGame, meta: { requiresAuth: true, gameType: 'wolf' }, props: true },
+  // { path: '/skins/:gameId', name: 'SkinsGame', component: SkinsGame, meta: { requiresAuth: true, gameType: 'skins' }, props: true },
+  // { path: '/sixsixsix/:gameId', name: 'SixSixSixGame', component: SixSixSixGame, meta: { requiresAuth: true, gameType: 'sixsixsix' }, props: true },
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
+})
+
+// Route guard to require authentication
+router.beforeEach((to: RouteLocationNormalized, _from: RouteLocationNormalized, next: Function) => {
+  const auth0 = useAuth0()
+  if (to.meta.requiresAuth) {
+    if (!auth0.isAuthenticated.value && !auth0.isLoading.value) {
+      auth0.loginWithRedirect({ appState: { targetUrl: to.fullPath } })
+    } else if (auth0.isLoading.value) {
+      const stop = watch(auth0.isLoading, (val) => {
+        if (!val) {
+          stop()
+          if (!auth0.isAuthenticated.value) {
+            auth0.loginWithRedirect({ appState: { targetUrl: to.fullPath } })
+          } else {
+            next()
+          }
+        }
+      })
+    } else {
+      next()
+    }
+  } else {
+    next()
+  }
 })
 
 export default router

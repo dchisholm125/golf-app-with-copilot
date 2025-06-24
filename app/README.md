@@ -5,6 +5,7 @@ This project contains:
 - Backend: FastAPI (Python)
 - Auth0 authentication (to be integrated)
 - Stripe payment processing (planned)
+- MySQL database (planned, for game and user data persistence)
 
 ## Philosophy
 - **Documentation:** All code, APIs, and features are thoroughly documented and kept up to date. Documentation is clear, complete, and beginner-friendly.
@@ -25,7 +26,7 @@ npm run dev
 cd app/backend
 python3 -m venv venv
 source venv/bin/activate
-pip install fastapi uvicorn[standard]
+pip install fastapi uvicorn[standard] mysql-connector-python
 uvicorn main:app --reload
 ```
 
@@ -35,6 +36,11 @@ uvicorn main:app --reload
 ## Payments (Stripe)
 - Stripe will be used for secure payment processing. All payment logic will be modular and PCI-compliant, with no raw card data handled by the app.
 - Integration will be planned for future releases.
+
+## Database (MySQL)
+- MySQL will be used to persist user, game, and statistics data.
+- FastAPI will serve as the backend API between the UI and the database.
+- Database connection and models will be documented in the backend README.
 
 ---
 
