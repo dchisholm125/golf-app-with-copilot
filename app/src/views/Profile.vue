@@ -8,14 +8,34 @@ import { useCurrentGameId } from '../composables/useCurrentGameId'
 const { user } = useAuth0()
 const { stats } = useProfileStats()
 const router = useRouter()
-const { currentGameId } = useCurrentGameId()
+const { currentGameId, currentGameType, fetchCurrentGameInfo } = useCurrentGameId()
 
 function goToGameSelect() {
   router.push({ name: 'GameSelect' })
 }
-function goToContinueGame() {
-  router.push({ name: 'GameSelect' })
+
+async function goToContinueGame() {
+  if (currentGameId.value) {
+    await fetchCurrentGameInfo(currentGameId.value)
+    if (currentGameType.value) {
+      router.push({ path: `/${currentGameType.value}/${currentGameId.value}` })
+    }
+  }
 }
+
+function handleStatCardClick(stat) {
+  if (stat.title === 'Games Won') {
+    router.push('/profile/games-won')
+  } else if (stat.title === 'Games Lost') {
+    router.push('/profile/games-lost')
+  }
+}
+
+const statCards = [
+  { title: 'Games Played', value: stats.value.gamesPlayed ?? 7, textClass: '' },
+  { title: 'Games Won', value: stats.value.gamesWon ?? 5, textClass: 'text-success' },
+  { title: 'Games Lost', value: stats.value.gamesLost ?? 2, textClass: 'text-danger' },
+]
 </script>
 
 <template>
@@ -30,27 +50,19 @@ function goToContinueGame() {
       </div>
     </div>
     <div class="row mb-4">
-      <div class="col-md-4">
-        <div class="card text-center">
-          <div class="card-body">
-            <h5 class="card-title">Games Played</h5>
-            <p class="display-6">{{ stats.gamesPlayed }}</p>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="card text-center">
-          <div class="card-body">
-            <h5 class="card-title">Games Won</h5>
-            <p class="display-6 text-success">{{ stats.gamesWon }}</p>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="card text-center">
-          <div class="card-body">
-            <h5 class="card-title">Games Lost</h5>
-            <p class="display-6 text-danger">{{ stats.gamesLost }}</p>
+      <div
+        v-for="stat in statCards"
+        :key="stat.title"
+        class="col-md-4 d-flex align-items-stretch"
+      >
+        <div
+          class="card text-center w-100 stat-card stat-card-clickable"
+          @click="handleStatCardClick(stat)"
+          :style="stat.title === 'Games Won' ? 'cursor:pointer;' : ''"
+        >
+          <div class="card-body d-flex flex-column justify-content-center align-items-center">
+            <h5 class="card-title">{{ stat.title }}</h5>
+            <p :class="['display-6', stat.textClass]">{{ stat.value }}</p>
           </div>
         </div>
       </div>
@@ -73,3 +85,12 @@ function goToContinueGame() {
     </div>
   </div>
 </template>
+
+<style scoped>
+.stat-card {
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+</style>

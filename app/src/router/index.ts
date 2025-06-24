@@ -15,6 +15,24 @@ const routes = [
   { path: '/wolf/:gameId', name: 'WolfGame', component: WolfGame, meta: { requiresAuth: true, gameType: 'wolf' }, props: true },
   // { path: '/skins/:gameId', name: 'SkinsGame', component: SkinsGame, meta: { requiresAuth: true, gameType: 'skins' }, props: true },
   // { path: '/sixsixsix/:gameId', name: 'SixSixSixGame', component: SixSixSixGame, meta: { requiresAuth: true, gameType: 'sixsixsix' }, props: true },
+  {
+    path: '/profile/games-won',
+    name: 'GamesWon',
+    component: () => import('../views/GamesWon.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/profile/games-lost',
+    name: 'GamesLost',
+    component: () => import('../views/GamesLost.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/game-complete/:gameType/:gameId',
+    name: 'GameComplete',
+    component: () => import('../views/GameComplete.vue'),
+    meta: { requiresAuth: true },
+  },
 ]
 
 const router = createRouter({
