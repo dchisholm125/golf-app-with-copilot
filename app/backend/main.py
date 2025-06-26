@@ -1,7 +1,8 @@
 from fastapi import FastAPI, HTTPException, Body, Path
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional
-import mysql.connector
+import psycopg2
+import psycopg2.extras
 import os
 import logging
 from dotenv import load_dotenv
@@ -13,7 +14,10 @@ app = FastAPI()
 # Middleware for CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://golfleaguegames.netlify.app"],  # Add your Netlify URL
+    allow_origins=[
+        "https://golfleaguegames.netlify.app",  # Production Netlify site
+        "http://localhost:5173"  # Local dev (optional)
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -30,15 +34,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Database connection utility
-DB_CONFIG = {
-    'host': os.getenv('MYSQL_HOST'),
-    'user': os.getenv('MYSQL_USER'),
-    'password': os.getenv('MYSQL_PASSWORD'),
-    'database': os.getenv('MYSQL_DATABASE'),
-}
+DATABASE_URL = os.getenv('DATABASE_URL')
 
 def get_db():
-    return mysql.connector.connect(**DB_CONFIG)
+    return psycopg2.connect(DATABASE_URL)
 
 # Pydantic models
 class PlayerIn(BaseModel):
@@ -62,10 +61,10 @@ def create_game(game: GameCreate):
     try:
         # Insert game with default state_json as empty object
         cursor.execute(
-            "INSERT INTO games (game_type, is_complete, state_json) VALUES (%s, %s, %s)",
+            "INSERT INTO games (game_type, is_complete, state_json) VALUES (%s, %s, %s) RETURNING id",
             (game.game_type, False, json.dumps({}))
         )
-        game_id = cursor.lastrowid
+        game_id = cursor.fetchone()[0]
         logger.info(f"Inserted game with ID: {game_id}")
         # Insert players
         for player in game.players:
@@ -123,7 +122,7 @@ def update_game_state(game_id: int, state: GameStateUpdate):
 @app.get("/games/{game_id}/state")
 def get_game_state(game_id: int):
     db = get_db()
-    cursor = db.cursor(dictionary=True)
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         cursor.execute("SELECT current_hole, state_json, game_type, is_complete FROM games WHERE id = %s", (game_id,))
         row = cursor.fetchone()
@@ -211,7 +210,7 @@ def mark_game_complete(game_id: int):
     cursor = db.cursor()
     try:
         cursor.execute(
-            "UPDATE games SET is_complete = TRUE, completed_at = NOW() WHERE id = %s AND is_complete = FALSE",
+            "UPDATE games SET is_complete = TRUE, completed_at = CURRENT_TIMESTAMP WHERE id = %s AND is_complete = FALSE",
             (game_id,)
         )
         db.commit()
@@ -233,7 +232,7 @@ def get_game_players(game_id: int):
     Returns: List of dicts with name, email, and user_id (if available).
     """
     db = get_db()
-    cursor = db.cursor(dictionary=True)
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         cursor.execute(
             "SELECT name, email, user_id FROM game_players WHERE game_id = %s",
