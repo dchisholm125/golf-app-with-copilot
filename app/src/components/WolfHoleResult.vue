@@ -97,6 +97,22 @@ const submitLabel = computed(() => {
 </template>
 
 <style scoped>
+.btn-group {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+@media (max-width: 600px) {
+  .btn-group {
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+  }
+  .btn-group .btn {
+    width: 100%;
+    font-size: 1rem;
+  }
+}
 .btn-group .btn {
   min-width: 120px;
   font-weight: 500;

@@ -43,6 +43,17 @@ const emit = defineEmits<{
   gap: 1rem;
   margin-bottom: 1rem;
 }
+@media (max-width: 600px) {
+  .player-tile-grid {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .player-tile-grid button {
+    width: 100%;
+    font-size: 1rem;
+    padding: 0.75em 0.5em;
+  }
+}
 .player-tile {
   width: 140px;
   transition: box-shadow 0.2s, background 0.2s;
