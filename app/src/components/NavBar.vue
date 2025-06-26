@@ -11,6 +11,7 @@ const { currentGameId } = useCurrentGameId()
 
 // Dropdown state for user menu
 const showDropdown = ref(false)
+const isMobile = ref(false)
 
 function goProfile() {
   router.push({ name: 'Profile' })
@@ -23,6 +24,10 @@ function logoutAndRedirect() {
 }
 function toggleDropdown() {
   showDropdown.value = !showDropdown.value
+}
+
+function handleResize() {
+  isMobile.value = window.innerWidth <= 600
 }
 
 onMounted(async () => {
@@ -48,6 +53,9 @@ onMounted(async () => {
       }
     }
   }
+
+  handleResize()
+  window.addEventListener('resize', handleResize)
 })
 
 watch(currentGameId, (val) => {
@@ -75,6 +83,7 @@ onMounted(() => {
 import { onBeforeUnmount } from 'vue'
 onBeforeUnmount(() => {
   document.removeEventListener('click', onClickOutside)
+  window.removeEventListener('resize', handleResize)
 })
 
 function goToCurrentGame() {
@@ -94,13 +103,24 @@ function goToCurrentGame() {
         </a>
       </div>
       <div class="d-flex align-items-center ms-auto profile-section">
-        <button class="btn btn-outline-primary nav-link profile-btn" @click="goProfile">
-          <i class="bi bi-person-circle me-1"></i> Profile
-        </button>
-        <div v-if="currentGameId" class="badge bg-primary me-3 game-id-link" style="font-size: 1rem; cursor: pointer;" @click="goToCurrentGame">Game ID: {{ currentGameId }}</div>
+        <template v-if="!isMobile">
+          <button class="btn btn-outline-primary nav-link profile-btn" @click="goProfile">
+            <i class="bi bi-person-circle me-1"></i> Profile
+          </button>
+          <div v-if="currentGameId" class="badge bg-primary me-3 game-id-link" style="font-size: 1rem; cursor: pointer;" @click="goToCurrentGame">Game ID: {{ currentGameId }}</div>
+        </template>
         <div class="dropdown ms-3" v-if="user?.picture" style="position: relative;">
           <img :src="user.picture" alt="User" width="40" height="40" class="rounded-circle dropdown-toggle" style="cursor:pointer;" @click.stop="toggleDropdown" />
-          <div id="user-dropdown-menu" class="dropdown-menu dropdown-menu-end show" v-if="showDropdown" style="display:block; position:absolute; top:100%; right:0;">
+          <div id="user-dropdown-menu" class="dropdown-menu dropdown-menu-end show" v-if="showDropdown" style="display:block; position:absolute; top:100%; right:0; min-width: 180px;">
+            <template v-if="isMobile">
+              <button class="dropdown-item" @click="goProfile">
+                <i class="bi bi-person-circle me-1"></i> Profile
+              </button>
+              <button v-if="currentGameId" class="dropdown-item" @click="goToCurrentGame">
+                <i class="bi bi-flag me-1"></i> Game ID: {{ currentGameId }}
+              </button>
+              <hr class="dropdown-divider" />
+            </template>
             <button class="dropdown-item" @click="logoutAndRedirect">Logout</button>
           </div>
         </div>
@@ -142,5 +162,18 @@ function goToCurrentGame() {
 }
 body {
   padding-top: 70px; /* Adjust if navbar height changes */
+}
+@media (max-width: 600px) {
+  .navbar {
+    min-width: 100vw;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .profile-section {
+    margin-left: 0;
+  }
+  .profile-btn, .game-id-link {
+    display: none !important;
+  }
 }
 </style>
