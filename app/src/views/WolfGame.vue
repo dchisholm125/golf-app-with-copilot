@@ -105,7 +105,7 @@ onMounted(async () => {
 
 <template>
   <div class="wolf-game-page">
-    <div class="wolf-game">
+    <div class="wolf-game mt-3 me-5">
       <h3 class="mb-3">Wolf Game</h3>
       <div v-if="loading" class="text-center my-5">
         <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
@@ -190,13 +190,14 @@ onMounted(async () => {
 
 <style scoped>
 .wolf-game-page {
-  width: 100vw;
+  width: 100%;
   min-height: 100vh;
   background: #fff;
   overflow-x: hidden;
 }
 .wolf-game {
   max-width: 420px;
+  width: 100%;
   margin: 0 auto;
   padding: 1rem 1rem 2rem 1rem;
   box-sizing: border-box;
