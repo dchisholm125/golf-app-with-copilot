@@ -24,9 +24,6 @@ function logoutAndRedirect() {
 function toggleDropdown() {
   showDropdown.value = !showDropdown.value
 }
-function closeDropdown() {
-  showDropdown.value = false
-}
 
 onMounted(async () => {
   console.log('[NavBar] onMounted: currentGameId', currentGameId.value)

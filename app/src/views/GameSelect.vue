@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { createGame, type GameCreateRequest } from '../services/gameService'
 import { useCurrentUser } from '../composables/useCurrentUser'
 import { useCurrentGameId } from '../composables/useCurrentGameId'
-import { saveGameState, loadGameState } from '../services/gameStateService'
+import { loadGameState } from '../services/gameStateService'
 
 const router = useRouter()
 
@@ -61,9 +61,6 @@ const canStartGame = computed(() => {
   return players.value.slice(0, numPlayers.value).every(p => p.name.trim() && p.email.trim())
 })
 
-const continueGameAvailable = computed(() => !!currentGameId.value)
-const continueGameLabel = computed(() => continueGameAvailable.value ? 'Continue Current Game' : 'Start Game')
-
 async function startGame() {
   message.value = ''
   loading.value = true
@@ -90,30 +87,6 @@ async function startGame() {
     message.value = err?.response?.data?.detail || 'Failed to create game.'
   } finally {
     loading.value = false
-  }
-}
-
-async function continueCurrentGame() {
-  if (!currentGameId.value) return
-  loading.value = true
-  try {
-    const state = await loadGameState(currentGameId.value)
-    if (state && state.state_json) {
-      selectedGame.value = state.state_json.gameType || 'wolf'
-      wolfGameState.value = state.state_json
-      numPlayers.value = state.state_json.players?.length || 4
-      players.value = state.state_json.players?.map((p: any) => ({ name: p.name, email: p.email })) || players.value
-    }
-  } catch (e) {
-    message.value = 'Could not load current game.'
-  } finally {
-    loading.value = false
-  }
-}
-
-function onWolfGameSaveState(payload: { current_hole: number, state_json: any }) {
-  if (currentGameId.value) {
-    saveGameState(currentGameId.value, payload)
   }
 }
 

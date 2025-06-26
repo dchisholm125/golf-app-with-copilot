@@ -7,7 +7,7 @@ const { loginWithRedirect } = useAuth0()
 <template>
   <div class="login-container">
     <h2>Login</h2>
-    <button @click="loginWithRedirect">Log In with Auth0</button>
+    <button @click="() => loginWithRedirect()">Log In with Auth0</button>
   </div>
 </template>
 

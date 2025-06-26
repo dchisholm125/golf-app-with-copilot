@@ -1,12 +1,10 @@
 <script setup lang="ts">
-import { defineProps } from 'vue'
-
 interface Player {
   name: string
   scores: number[]
 }
 
-const props = defineProps<{
+defineProps<{
   wolfPlayer: Player
   partnerPlayer: Player | null
   nonWolfPlayers: Player[]

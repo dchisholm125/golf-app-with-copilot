@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import { useAuth0 } from '@auth0/auth0-vue'
 import { useProfileStats } from '../services/profileStats'
 import { useRouter } from 'vue-router'
@@ -23,7 +22,7 @@ async function goToContinueGame() {
   }
 }
 
-function handleStatCardClick(stat) {
+function handleStatCardClick(stat: { title: string }) {
   if (stat.title === 'Games Won') {
     router.push('/profile/games-won')
   } else if (stat.title === 'Games Lost') {

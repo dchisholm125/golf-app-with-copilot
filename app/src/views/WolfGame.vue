@@ -3,6 +3,7 @@ import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useWolfGameState } from '../composables/useWolfGameState'
 import { loadGameState } from '../services/gameStateService'
+import { getPlayersForGame } from '../services/gameService'
 import Scoreboard from '../components/Scoreboard.vue'
 import GameComplete from './GameComplete.vue'
 import WolfPartnerSelect from '../components/WolfPartnerSelect.vue'
@@ -94,10 +95,6 @@ onMounted(async () => {
     loading.value = false
   }
 })
-
-function getPlayersForGame(value: number): any[] | PromiseLike<any[]> {
-  throw new Error('Function not implemented.')
-}
 </script>
 
 <template>

@@ -19,15 +19,15 @@ const emit = defineEmits<{
 
 <template>
   <div class="mb-3">
-    <p v-if="players.length > 1">Choose a partner for <strong>{{ wolfPlayer.name }}</strong> or go Lone Wolf:</p>
-    <p v-else><strong>{{ wolfPlayer.name }}</strong> is the only player and must go Lone Wolf.</p>
+    <p v-if="props.players.length > 1">Choose a partner for <strong>{{ props.wolfPlayer.name }}</strong> or go Lone Wolf:</p>
+    <p v-else><strong>{{ props.wolfPlayer.name }}</strong> is the only player and must go Lone Wolf.</p>
     <div class="player-tile-grid">
       <button
-        v-for="partner in players.filter(p => p !== wolfPlayer)"
+        v-for="partner in props.players.filter((p: Player) => p !== props.wolfPlayer)"
         :key="partner.name"
         class="btn btn-outline-success btn-sm mt-2"
         @click="emit('choose-partner', partner)"
-        :disabled="players.length <= 1"
+        :disabled="props.players.length <= 1"
       >
         <span class="fw-bold">{{ partner.name }}</span>
       </button>
