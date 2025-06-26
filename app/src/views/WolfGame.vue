@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useWolfGameState } from '../composables/useWolfGameState'
 import { loadGameState } from '../services/gameStateService'
@@ -36,8 +36,14 @@ const {
   teeOrder,
 } = useWolfGameState()
 
+const isMobile = ref(false)
+
 // Load game state on mount
 onMounted(async () => {
+  isMobile.value = window.innerWidth <= 600
+  window.addEventListener('resize', () => {
+    isMobile.value = window.innerWidth <= 600
+  })
   if (!gameId.value) {
     message.value = 'No game ID found in route.'
     loading.value = false
@@ -141,33 +147,35 @@ onMounted(async () => {
             />
           </div>
           <!-- Tee Order Table -->
-          <div class="mb-4">
+          <div class="mb-4 tee-order-wrapper">
             <h5 class="mb-2">Tee Order</h5>
-            <table class="table table-sm table-bordered tee-order-table">
-              <thead>
-                <tr>
-                  <th style="width: 80px;">Order</th>
-                  <th>Player</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(player, idx) in teeOrder" :key="player.name" :class="{ 'table-warning': player.name === wolfPlayer.name }">
-                  <td>
-                    <span v-if="idx === teeOrder.length - 1" class="fw-bold text-danger">Wolf</span>
-                    <span v-else>{{ idx + 1 }}{{ ['st','nd','rd'][idx] || 'th' }}</span>
-                  </td>
-                  <td>
-                    <span class="fw-bold">{{ player.name }}</span>
-                    <span v-if="player.name === wolfPlayer.name" class="badge bg-warning text-dark ms-2">Wolf</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="table-responsive">
+              <table class="table table-sm table-bordered tee-order-table">
+                <thead>
+                  <tr>
+                    <th style="width: 80px;">Order</th>
+                    <th>Player</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(player, idx) in teeOrder" :key="player.name" :class="{ 'table-warning': player.name === wolfPlayer.name }">
+                    <td>
+                      <span v-if="idx === teeOrder.length - 1" class="fw-bold text-danger">Wolf</span>
+                      <span v-else>{{ idx + 1 }}{{ ['st','nd','rd'][idx] || 'th' }}</span>
+                    </td>
+                    <td>
+                      <span class="fw-bold">{{ player.name }}</span>
+                      <span v-if="player.name === wolfPlayer.name" class="badge bg-warning text-dark ms-2">Wolf</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
           <!-- End Tee Order Table -->
           <div class="mt-4">
             <h6>Scoreboard</h6>
-            <Scoreboard :players="players" :holesPlayed="currentHole" title="Scoreboard" />
+            <Scoreboard :players="players" :holesPlayed="currentHole" title="Scoreboard" :mobileCondensed="isMobile" />
           </div>
         </template>
         <template v-else>
@@ -210,5 +218,21 @@ onMounted(async () => {
   word-break: break-word;
   overflow-wrap: break-word;
   display: inline-block;
+}
+.tee-order-wrapper {
+  max-width: 100vw;
+  overflow-x: auto;
+}
+.tee-order-table {
+  min-width: 220px;
+  max-width: 100vw;
+  overflow-x: auto;
+}
+@media (max-width: 600px) {
+  .tee-order-table, .tee-order-wrapper {
+    max-width: 100vw;
+    overflow-x: auto;
+    font-size: 0.95rem;
+  }
 }
 </style>

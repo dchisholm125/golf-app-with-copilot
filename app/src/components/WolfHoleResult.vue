@@ -113,6 +113,8 @@ const submitLabel = computed(() => {
   display: flex;
   gap: 1rem;
   flex-wrap: wrap;
+  max-width: 100vw;
+  overflow-x: auto;
 }
 .info-tooltip {
   position: relative;
@@ -162,6 +164,8 @@ const submitLabel = computed(() => {
     flex-direction: column;
     gap: 0.5rem;
     width: 100%;
+    max-width: 100vw;
+    overflow-x: auto;
   }
   .btn-group .btn, .submit-btn {
     width: 100%;
