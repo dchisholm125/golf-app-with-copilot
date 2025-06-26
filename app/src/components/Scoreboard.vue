@@ -94,23 +94,25 @@ const lastHoleIdx = computed(() => Math.max(0, props.holesPlayed - 1))
 </template>
 
 <style scoped>
-.scoreboard-wrapper {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: auto;
-  box-sizing: border-box;
-}
-.scoreboard-table-container {
+.scoreboard-wrapper,
+.scoreboard-table-container,
+.scoreboard-table,
+.scoreboard-mobile-tables {
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
   box-sizing: border-box;
 }
 .scoreboard-table {
-  min-width: 320px;
-  max-width: 100%;
-  overflow-x: auto;
-  table-layout: auto;
+  /* Remove min-width, force table to fit container */
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.scoreboard-table th,
+.scoreboard-table td {
+  word-break: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .player-name-cell {
   max-width: 120px;
