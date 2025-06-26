@@ -6,8 +6,18 @@ import os
 import logging
 from dotenv import load_dotenv
 import json
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+# Middleware for CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://golfleaguegames.netlify.app"],  # Add your Netlify URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Load environment variables from .env file
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
