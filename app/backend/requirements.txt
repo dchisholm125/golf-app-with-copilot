@@ -1,6 +1,6 @@
 fastapi
 uvicorn[standard]
 pydantic
-pydantic[email]
-mysql-connector-python
 python-dotenv
+psycopg2-binary
+psycopg2
