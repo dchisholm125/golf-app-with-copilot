@@ -3,6 +3,9 @@
 // Thoroughly documented and beginner-friendly
 
 import axios from 'axios'
+import { API_BASE_URL } from '../config'
+
+const api = axios.create({ baseURL: API_BASE_URL })
 
 export interface Player {
   name: string
@@ -26,8 +29,7 @@ export interface GameCreateResponse {
  * @returns GameCreateResponse from backend
  */
 export async function createGame(data: GameCreateRequest): Promise<GameCreateResponse> {
-  // Adjust the URL if your backend is hosted elsewhere
-  const response = await axios.post('/api/games/', data)
+  const response = await api.post('/games/', data)
   return response.data
 }
 
@@ -37,6 +39,6 @@ export async function createGame(data: GameCreateRequest): Promise<GameCreateRes
  * @returns Array of Player objects
  */
 export async function getPlayersForGame(gameId: number): Promise<Player[]> {
-  const response = await axios.get(`/api/games/${gameId}/players`)
+  const response = await api.get(`/games/${gameId}/players`)
   return response.data
 }
