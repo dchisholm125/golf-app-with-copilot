@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { defineProps, onMounted } from 'vue'
 import axios from 'axios'
+import { useCurrentGameId } from '../composables/useCurrentGameId'
 
 interface Player {
   name: string
@@ -12,6 +13,8 @@ const props = defineProps<{
   gameType: string
   gameId?: number
 }>()
+
+const { clearCurrentGame } = useCurrentGameId()
 
 // Calculate total scores and sort for placement
 const playerResults = [...props.players].map(p => ({
@@ -41,6 +44,8 @@ onMounted(() => {
   if (props.gameId) {
     axios.patch(`/api/games/${props.gameId}/complete`, { is_complete: true }).catch(() => {})
   }
+  // Clear current game association for this user
+  clearCurrentGame()
 })
 </script>
 

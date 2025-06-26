@@ -79,6 +79,13 @@ import { onBeforeUnmount } from 'vue'
 onBeforeUnmount(() => {
   document.removeEventListener('click', onClickOutside)
 })
+
+function goToCurrentGame() {
+  if (currentGameId.value) {
+    // Always navigate to WolfGame for now
+    router.push({ name: 'WolfGame', params: { gameId: currentGameId.value } })
+  }
+}
 </script>
 
 <template>
@@ -93,7 +100,7 @@ onBeforeUnmount(() => {
         <button class="btn btn-outline-primary nav-link profile-btn" @click="goProfile">
           <i class="bi bi-person-circle me-1"></i> Profile
         </button>
-        <div v-if="currentGameId" class="badge bg-primary me-3" style="font-size: 1rem;">Game ID: {{ currentGameId }}</div>
+        <div v-if="currentGameId" class="badge bg-primary me-3 game-id-link" style="font-size: 1rem; cursor: pointer;" @click="goToCurrentGame">Game ID: {{ currentGameId }}</div>
         <div class="dropdown ms-3" v-if="user?.picture" style="position: relative;">
           <img :src="user.picture" alt="User" width="40" height="40" class="rounded-circle dropdown-toggle" style="cursor:pointer;" @click.stop="toggleDropdown" />
           <div id="user-dropdown-menu" class="dropdown-menu dropdown-menu-end show" v-if="showDropdown" style="display:block; position:absolute; top:100%; right:0;">

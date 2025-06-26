@@ -32,6 +32,7 @@ const {
   choosePartner,
   goLoneWolf,
   submitHole,
+  teeOrder,
 } = useWolfGameState()
 
 // Load game state on mount
@@ -106,11 +107,6 @@ function getPlayersForGame(value: number): any[] | PromiseLike<any[]> {
       <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
     </div>
     <div v-else>
-      <div class="mb-2 text-muted">
-        Debug: currentHole = {{ currentHole }}, 
-        holesPlayed = {{ currentHole }}, 
-        wolfPlayer = {{ wolfPlayer.name }}, 
-      </div>
       <div v-if="message" class="alert alert-danger">{{ message }}</div>
       <div v-if="!gameStarted">
         <div class="alert alert-info">This game has not started yet. Please start the game to begin scoring.</div>
@@ -147,6 +143,31 @@ function getPlayersForGame(value: number): any[] | PromiseLike<any[]> {
               @submit-hole="submitHole"
             />
           </div>
+          <!-- Tee Order Table -->
+          <div class="mb-4">
+            <h5 class="mb-2">Tee Order</h5>
+            <table class="table table-sm table-bordered tee-order-table">
+              <thead>
+                <tr>
+                  <th style="width: 80px;">Order</th>
+                  <th>Player</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(player, idx) in teeOrder" :key="player.name" :class="{ 'table-warning': player.name === wolfPlayer.name }">
+                  <td>
+                    <span v-if="idx === teeOrder.length - 1" class="fw-bold text-danger">Wolf</span>
+                    <span v-else>{{ idx + 1 }}{{ ['st','nd','rd'][idx] || 'th' }}</span>
+                  </td>
+                  <td>
+                    <span class="fw-bold">{{ player.name }}</span>
+                    <span v-if="player.name === wolfPlayer.name" class="badge bg-warning text-dark ms-2">Wolf</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <!-- End Tee Order Table -->
           <div class="mt-4">
             <h6>Scoreboard</h6>
             <Scoreboard :players="players" :holesPlayed="currentHole" title="Scoreboard" />

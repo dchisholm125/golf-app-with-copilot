@@ -201,7 +201,7 @@ def mark_game_complete(game_id: int):
     cursor = db.cursor()
     try:
         cursor.execute(
-            "UPDATE games SET is_complete = TRUE WHERE id = %s AND is_complete = FALSE",
+            "UPDATE games SET is_complete = TRUE, completed_at = NOW() WHERE id = %s AND is_complete = FALSE",
             (game_id,)
         )
         db.commit()

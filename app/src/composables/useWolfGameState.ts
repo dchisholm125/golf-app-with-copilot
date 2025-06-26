@@ -26,28 +26,26 @@ export function useWolfGameState() {
 
   const wolfPlayer = computed<Player>(() => {
     // Defensive: always return a valid Player object
-    if (
-      currentHole.value >= totalHoles.value ||
-      !players.value.length ||
-      !wolfOrder.value.length ||
-      typeof wolfOrder.value[currentHole.value] !== 'number'
-    ) {
-      // Defensive fallback: first player or empty
+    if (!players.value.length || !wolfOrder.value.length) {
       if (players.value.length > 0) {
         return players.value[0]
       }
       return { name: '', scores: Array(totalHoles.value).fill(0) }
     }
-    const idx = wolfOrder.value[currentHole.value] % players.value.length
+    const idx = wolfOrder.value[wolfOrder.value.length - 1] // Wolf is last in order
     const player = players.value[idx]
     if (!player) {
-      // Defensive fallback: first player
       return players.value[0]
     }
     return player
   })
 
   const nonWolfPlayers = computed(() => players.value.filter(p => p !== wolfPlayer.value && p !== partnerPlayer.value))
+
+  const teeOrder = computed(() => {
+    // Return array of Player objects in tee order
+    return wolfOrder.value.map(idx => players.value[idx])
+  })
 
   onMounted(async () => {
     if (!gameId.value) {
@@ -87,7 +85,12 @@ export function useWolfGameState() {
       } else {
         currentHole.value = 0
       }
-      if (state.state_json.wolfOrder) wolfOrder.value = state.state_json.wolfOrder
+      // Ensure wolfOrder is a queue of player indices (length = number of players)
+      if (Array.isArray(state.state_json.wolfOrder) && state.state_json.wolfOrder.length === players.value.length) {
+        wolfOrder.value = state.state_json.wolfOrder
+      } else {
+        wolfOrder.value = Array.from({ length: players.value.length }, (_, i) => i)
+      }
       if (state.state_json.numHoles) totalHoles.value = state.state_json.numHoles
       if (typeof state.state_json.loneWolf === 'boolean') loneWolf.value = state.state_json.loneWolf
       if (typeof state.state_json.pairingComplete === 'boolean') pairingComplete.value = state.state_json.pairingComplete
@@ -112,11 +115,7 @@ export function useWolfGameState() {
         })
       }
     }
-    wolfOrder.value = Array.from({ length: totalHoles.value }, (_, i) => i % players.value.length)
-    for (let i = wolfOrder.value.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      ;[wolfOrder.value[i], wolfOrder.value[j]] = [wolfOrder.value[j], wolfOrder.value[i]]
-    }
+    wolfOrder.value = Array.from({ length: players.value.length }, (_, i) => i)
     currentHole.value = 0
     pairingComplete.value = false
     loneWolf.value = false
@@ -162,20 +161,27 @@ export function useWolfGameState() {
       }
     } else {
       if ((holeWinner.value === wolf.name || holeWinner.value === partnerPlayer.value?.name) && Array.isArray(wolf.scores) && partnerPlayer.value && Array.isArray(partnerPlayer.value.scores)) {
-        wolf.scores[currentHole.value] = 2
-        partnerPlayer.value.scores[currentHole.value] = 2
+        // Wolf + partner win: each gets 1 point
+        wolf.scores[currentHole.value] = 1
+        partnerPlayer.value.scores[currentHole.value] = 1
         players.value.forEach(p => {
           if (p !== wolf && p !== partnerPlayer.value) p.scores[currentHole.value] = 0
         })
       } else {
+        // Opposing team wins: each gets 1 point
         players.value.forEach(p => {
-          if (p !== wolf && p !== partnerPlayer.value) p.scores[currentHole.value] = 2
+          if (p !== wolf && p !== partnerPlayer.value) p.scores[currentHole.value] = 1
           else p.scores[currentHole.value] = 0
         })
       }
     }
     // Debug: log player scores after scoring
     console.log('After scoring:', JSON.parse(JSON.stringify(players.value)))
+    // Rotate wolf order: move last to front (Wolf tees last, then goes first next hole)
+    const last = wolfOrder.value.pop();
+    if (typeof last !== 'undefined') {
+      wolfOrder.value.unshift(last);
+    }
     if (currentHole.value < totalHoles.value - 1) {
       currentHole.value++
       pairingComplete.value = false
@@ -239,5 +245,6 @@ export function useWolfGameState() {
     choosePartner,
     goLoneWolf,
     submitHole,
+    teeOrder,
   }
 }
