@@ -30,28 +30,32 @@ const lastHoleIdx = computed(() => Math.max(0, props.holesPlayed - 1))
 <template>
   <div class="scoreboard-wrapper">
     <h6 v-if="title">{{ title }}</h6>
-    <table class="table table-bordered scoreboard-table">
-      <thead>
-        <tr>
-          <th>Player</th>
-          <th v-if="mobileCondensed && completedHoles">Last Hole</th>
-          <th v-else v-for="h in completedHoles" :key="h">Hole {{ h }}</th>
-          <th>Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="player in players" :key="player.name">
-          <td>{{ player.name }}</td>
-          <td v-if="mobileCondensed && completedHoles">
-            {{ player.scores[lastHoleIdx] ?? '' }}
-          </td>
-          <template v-else>
-            <td v-for="(score, idx) in player.scores.slice(0, completedHoles)" :key="idx">{{ score }}</td>
-          </template>
-          <td><strong>{{ player.scores.slice(0, completedHoles).reduce((a, b) => a + b, 0) }}</strong></td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="scoreboard-table-container">
+      <table class="table table-bordered scoreboard-table">
+        <thead>
+          <tr>
+            <th>Player</th>
+            <th v-if="mobileCondensed && completedHoles">Last Hole</th>
+            <th v-else v-for="h in completedHoles" :key="h">Hole {{ h }}</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="player in players" :key="player.name">
+            <td class="player-name-cell">
+              <span class="player-name-text">{{ player.name }}</span>
+            </td>
+            <td v-if="mobileCondensed && completedHoles">
+              {{ player.scores[lastHoleIdx] ?? '' }}
+            </td>
+            <template v-else>
+              <td v-for="(score, idx) in player.scores.slice(0, completedHoles)" :key="idx">{{ score }}</td>
+            </template>
+            <td><strong>{{ player.scores.slice(0, completedHoles).reduce((a, b) => a + b, 0) }}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
@@ -61,15 +65,41 @@ const lastHoleIdx = computed(() => Math.max(0, props.holesPlayed - 1))
   max-width: 100vw;
   overflow-x: auto;
 }
+.scoreboard-table-container {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: auto;
+}
 .scoreboard-table {
   min-width: 320px;
   max-width: 100vw;
   overflow-x: auto;
+  table-layout: auto;
+}
+.player-name-cell {
+  max-width: 120px;
+  padding: 0.25rem 0.5rem;
+  overflow: hidden;
+}
+.player-name-text {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 1rem;
+  font-weight: 500;
 }
 @media (max-width: 600px) {
-  .scoreboard-table, .scoreboard-wrapper {
+  .scoreboard-table, .scoreboard-wrapper, .scoreboard-table-container {
     max-width: 100vw;
     overflow-x: auto;
+    font-size: 0.95rem;
+  }
+  .player-name-cell {
+    max-width: 80px;
+    padding: 0.2rem 0.3rem;
+  }
+  .player-name-text {
     font-size: 0.95rem;
   }
 }
