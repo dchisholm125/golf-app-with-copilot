@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { API_BASE_URL } from '../config'
 import axios from 'axios'
 
 const currentGameId = ref<number | null>(null)
@@ -6,7 +7,7 @@ const currentGameType = ref<string | null>(null)
 
 async function fetchCurrentGameInfo(gameId: number) {
   try {
-    const res = await axios.get(`/api/games/${gameId}/state`)
+    const res = await axios.get(`${API_BASE_URL}/games/${gameId}/state`)
     if (res.data) {
       currentGameId.value = gameId
       currentGameType.value = res.data.game_type || null
