@@ -96,17 +96,19 @@ const lastHoleIdx = computed(() => Math.max(0, props.holesPlayed - 1))
 <style scoped>
 .scoreboard-wrapper {
   width: 100%;
-  max-width: 100vw;
+  max-width: 100%;
   overflow-x: auto;
+  box-sizing: border-box;
 }
 .scoreboard-table-container {
   width: 100%;
-  max-width: 100vw;
+  max-width: 100%;
   overflow-x: auto;
+  box-sizing: border-box;
 }
 .scoreboard-table {
   min-width: 320px;
-  max-width: 100vw;
+  max-width: 100%;
   overflow-x: auto;
   table-layout: auto;
 }
@@ -128,11 +130,11 @@ const lastHoleIdx = computed(() => Math.max(0, props.holesPlayed - 1))
   flex-direction: column;
   gap: 0.5rem;
   width: 100%;
-  max-width: 100vw;
+  max-width: 100%;
 }
 @media (max-width: 600px) {
   .scoreboard-table, .scoreboard-wrapper, .scoreboard-table-container, .scoreboard-mobile-tables {
-    max-width: 100vw;
+    max-width: 100%;
     overflow-x: auto;
     font-size: 0.95rem;
   }

@@ -104,91 +104,105 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="wolf-game container py-4">
-    <h3 class="mb-3">Wolf Game</h3>
-    <div v-if="loading" class="text-center my-5">
-      <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
-    </div>
-    <div v-else>
-      <div v-if="message" class="alert alert-danger">{{ message }}</div>
-      <div v-if="!gameStarted">
-        <div class="alert alert-info">This game has not started yet. Please start the game to begin scoring.</div>
-        <button class="btn btn-primary" @click="startGame">Start Wolf Game</button>
+  <div class="wolf-game-page">
+    <div class="wolf-game">
+      <h3 class="mb-3">Wolf Game</h3>
+      <div v-if="loading" class="text-center my-5">
+        <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
       </div>
       <div v-else>
-        <template v-if="currentHole < totalHoles">
-          <h5>Hole {{ currentHole + 1 }} / {{ totalHoles }}</h5>
-          <div class="mb-2">
-            <strong>Wolf for this hole:</strong> {{ wolfPlayer.name }}
-          </div>
-          <div v-if="!pairingComplete">
-            <WolfPartnerSelect
-              :players="players"
-              :wolfPlayer="wolfPlayer"
-              @choose-partner="choosePartner"
-              @go-lone-wolf="goLoneWolf"
-            />
-          </div>
-          <div v-else>
-            <WolfTeamsSummary
-              :wolfPlayer="wolfPlayer"
-              :partnerPlayer="partnerPlayer"
-              :nonWolfPlayers="nonWolfPlayers"
-              :loneWolf="loneWolf"
-            />
-            <WolfHoleResult
-              :wolfPlayer="wolfPlayer"
-              :partnerPlayer="partnerPlayer"
-              :nonWolfPlayers="nonWolfPlayers"
-              :loneWolf="loneWolf"
-              :holeWinner="holeWinner"
-              @update:holeWinner="val => holeWinner = val"
-              @submit-hole="submitHole"
-            />
-          </div>
-          <!-- Tee Order Table -->
-          <div class="mb-4 tee-order-wrapper">
-            <h5 class="mb-2">Tee Order</h5>
-            <div class="table-responsive">
-              <table class="table table-sm table-bordered tee-order-table">
-                <thead>
-                  <tr>
-                    <th style="width: 80px;">Order</th>
-                    <th>Player</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(player, idx) in teeOrder" :key="player.name" :class="{ 'table-warning': player.name === wolfPlayer.name }">
-                    <td>
-                      <span v-if="idx === teeOrder.length - 1" class="fw-bold text-danger">Wolf</span>
-                      <span v-else>{{ idx + 1 }}{{ ['st','nd','rd'][idx] || 'th' }}</span>
-                    </td>
-                    <td>
-                      <span class="fw-bold">{{ player.name }}</span>
-                      <span v-if="player.name === wolfPlayer.name" class="badge bg-warning text-dark ms-2">Wolf</span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+        <div v-if="message" class="alert alert-danger">{{ message }}</div>
+        <div v-if="!gameStarted">
+          <div class="alert alert-info">This game has not started yet. Please start the game to begin scoring.</div>
+          <button class="btn btn-primary" @click="startGame">Start Wolf Game</button>
+        </div>
+        <div v-else>
+          <template v-if="currentHole < totalHoles">
+            <h5>Hole {{ currentHole + 1 }} / {{ totalHoles }}</h5>
+            <div class="mb-2">
+              <strong>Wolf for this hole:</strong> {{ wolfPlayer.name }}
             </div>
-          </div>
-          <!-- End Tee Order Table -->
-          <div class="mt-4">
-            <h6>Scoreboard</h6>
-            <Scoreboard :players="players" :holesPlayed="currentHole" title="Scoreboard" :mobileCondensed="isMobile" />
-          </div>
-        </template>
-        <template v-else>
-          <GameComplete :players="players" :gameType="'wolf'" />
-        </template>
+            <div v-if="!pairingComplete">
+              <WolfPartnerSelect
+                :players="players"
+                :wolfPlayer="wolfPlayer"
+                @choose-partner="choosePartner"
+                @go-lone-wolf="goLoneWolf"
+              />
+            </div>
+            <div v-else>
+              <WolfTeamsSummary
+                :wolfPlayer="wolfPlayer"
+                :partnerPlayer="partnerPlayer"
+                :nonWolfPlayers="nonWolfPlayers"
+                :loneWolf="loneWolf"
+              />
+              <WolfHoleResult
+                :wolfPlayer="wolfPlayer"
+                :partnerPlayer="partnerPlayer"
+                :nonWolfPlayers="nonWolfPlayers"
+                :loneWolf="loneWolf"
+                :holeWinner="holeWinner"
+                @update:holeWinner="val => holeWinner = val"
+                @submit-hole="submitHole"
+              />
+            </div>
+            <!-- Tee Order Table -->
+            <div class="mb-4 tee-order-wrapper">
+              <h5 class="mb-2">Tee Order</h5>
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered tee-order-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 80px;">Order</th>
+                      <th>Player</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(player, idx) in teeOrder" :key="player.name" :class="{ 'table-warning': player.name === wolfPlayer.name }">
+                      <td>
+                        <span v-if="idx === teeOrder.length - 1" class="fw-bold text-danger">Wolf</span>
+                        <span v-else>{{ idx + 1 }}{{ ['st','nd','rd'][idx] || 'th' }}</span>
+                      </td>
+                      <td>
+                        <span class="fw-bold">{{ player.name }}</span>
+                        <span v-if="player.name === wolfPlayer.name" class="badge bg-warning text-dark ms-2">Wolf</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <!-- End Tee Order Table -->
+            <div class="mt-4">
+              <h6>Scoreboard</h6>
+              <Scoreboard :players="players" :holesPlayed="currentHole" title="Scoreboard" :mobileCondensed="isMobile" />
+            </div>
+          </template>
+          <template v-else>
+            <GameComplete :players="players" :gameType="'wolf'" />
+          </template>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+.wolf-game-page {
+  width: 100vw;
+  min-height: 100vh;
+  background: #fff;
+  overflow-x: hidden;
+}
 .wolf-game {
-  max-width: 800px;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 1rem 1rem 2rem 1rem;
+  box-sizing: border-box;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
 }
 .player-tile-grid {
   display: flex;
@@ -219,20 +233,23 @@ onMounted(async () => {
   overflow-wrap: break-word;
   display: inline-block;
 }
-.tee-order-wrapper {
-  max-width: 100vw;
-  overflow-x: auto;
-}
+.tee-order-wrapper,
 .tee-order-table {
-  min-width: 220px;
-  max-width: 100vw;
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  box-sizing: border-box;
 }
 @media (max-width: 600px) {
   .tee-order-table, .tee-order-wrapper {
-    max-width: 100vw;
-    overflow-x: auto;
+    max-width: 100%;
     font-size: 0.95rem;
+  }
+}
+@media (min-width: 800px) {
+  .wolf-game {
+    max-width: 800px;
+    padding: 2rem 2rem 3rem 2rem;
   }
 }
 </style>
