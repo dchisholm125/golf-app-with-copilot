@@ -22,6 +22,8 @@ const playerResults = [...props.players].map(p => ({
   total: p.scores.reduce((a, b) => a + b, 0)
 })).sort((a, b) => b.total - a.total)
 
+const winnerName = playerResults.length ? playerResults[0].name : ''
+
 onMounted(() => {
   // Fire confetti cannons
   import('canvas-confetti').then(confetti => {
@@ -51,7 +53,9 @@ onMounted(() => {
 
 <template>
   <div class="game-complete container py-5 text-center">
+    <h1 class="holes-played-display mb-4">Holes Played: {{ players[0]?.scores.length ?? 0 }}</h1>
     <h2 class="mb-4">Congrats!</h2>
+    <div v-if="winnerName" class="winner-name-display mb-3">{{ winnerName }}</div>
     <div id="confetti-cannon"></div>
     <p class="lead mb-4">You've completed a {{ props.gameType }} game.</p>
     <h4 class="mb-3">Final Standings</h4>
@@ -81,5 +85,19 @@ onMounted(() => {
 }
 #confetti-cannon {
   min-height: 80px;
+}
+.holes-played-display {
+  font-size: 2.8rem;
+  font-weight: 800;
+  color: #1976d2;
+  letter-spacing: 2px;
+  text-shadow: 0 2px 8px rgba(25,118,210,0.12);
+}
+.winner-name-display {
+  font-size: 3.2rem;
+  font-weight: 900;
+  color: #2e7d32;
+  letter-spacing: 2px;
+  text-shadow: 0 2px 12px rgba(46,125,50,0.12);
 }
 </style>
