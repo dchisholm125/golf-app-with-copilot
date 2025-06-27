@@ -9,13 +9,13 @@ export default defineComponent({
   name: 'GameHistory',
   setup() {
     const games = ref<any[]>([])
-    const loading = ref(true)
+    const historyLoading = ref(true)
     const playerLists = ref<Record<number, any>>({})
     const { isAuthenticated } = useCurrentUser()
     const { user } = useAuth0()
     const userEmail = computed(() => user.value?.email || '')
     // Use the new composable
-    const { dbUser, fetchDbUser, loading: dbUserLoading } = useDbUser()
+    const { dbUser, fetchDbUser } = useDbUser()
 
     onMounted(async () => {
       await fetchDbUser()
@@ -28,7 +28,7 @@ export default defineComponent({
           }
         }
       }
-      loading.value = false
+      historyLoading.value = false
     })
 
     function formatDate(dateStr: string): string {
@@ -43,7 +43,7 @@ export default defineComponent({
       return Array.isArray(arr) && arr.length > 0 ? arr.reduce((a, b) => a + b, 0) : ''
     }
 
-    return { games, loading, playerLists, userEmail, formatDate, sum }
+    return { games, historyLoading, playerLists, userEmail, formatDate, sum }
   }
 })
 </script>
@@ -51,7 +51,7 @@ export default defineComponent({
 <template>
   <div class="game-history">
     <h1>Game History</h1>
-    <div v-if="loading">Loading...</div>
+    <div v-if="historyLoading">Loading...</div>
     <div v-else>
       <div v-if="games.length === 0">No games found.</div>
       <div v-else>
