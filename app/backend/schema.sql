@@ -2,8 +2,9 @@
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE
-    -- Optionally: auth0_id VARCHAR(255), avatar_url VARCHAR(255)
+    email VARCHAR(255) NOT NULL UNIQUE,
+    auth0_id VARCHAR(255) UNIQUE -- Auth0 user_id for reliable mapping
+    -- Optionally: avatar_url VARCHAR(255)
 );
 
 -- games table
@@ -23,7 +24,8 @@ CREATE TABLE games (
 CREATE TABLE game_players (
     id SERIAL PRIMARY KEY,
     game_id INT NOT NULL,
-    user_id INT,
+    user_id INT, -- Internal DB user id
+    auth0_id VARCHAR(255), -- Auth0 user_id for direct mapping
     name VARCHAR(100) NOT NULL,
     email VARCHAR(255) NOT NULL,
     -- Optionally: team VARCHAR(50), player_order INT
