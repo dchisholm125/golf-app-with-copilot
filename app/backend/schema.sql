@@ -14,7 +14,8 @@ CREATE TABLE games (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     current_hole INT DEFAULT 0,
     state_json JSONB DEFAULT NULL,
-    is_complete BOOLEAN DEFAULT FALSE
+    is_complete BOOLEAN DEFAULT FALSE,
+    completed_at TIMESTAMP DEFAULT NULL
     -- Optionally: status VARCHAR(50), created_by INT, FOREIGN KEY (created_by) REFERENCES users(id)
 );
 
