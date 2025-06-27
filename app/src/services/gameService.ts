@@ -16,6 +16,7 @@ export interface Player {
 export interface GameCreateRequest {
   game_type: string
   players: Player[]
+  skin_value?: number // Only for Skins games
 }
 
 export interface GameCreateResponse {
@@ -59,4 +60,14 @@ export async function fetchUserGameHistory(userId: number): Promise<any[]> {
   console.log('[gameService] fetchUserGameHistory - lost:', lost.data.games)
   console.log('[gameService] fetchUserGameHistory - allGames:', allGames)
   return allGames.sort((a, b) => (a.date < b.date ? 1 : -1))
+}
+
+/**
+ * Cancel (delete) a game by its ID.
+ * Calls the backend DELETE /games/{game_id} endpoint.
+ * @param gameId The ID of the game to cancel
+ * @returns Promise resolving when the game is deleted
+ */
+export async function cancelGame(gameId: number): Promise<void> {
+  await api.delete(`/games/${gameId}`)
 }

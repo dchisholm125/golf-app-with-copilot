@@ -4,10 +4,11 @@ import { useRouter } from 'vue-router'
 import { useAuth0 } from '@auth0/auth0-vue'
 import { useCurrentGameId } from '../composables/useCurrentGameId'
 import axios from 'axios'
+import { cancelGame } from '../services/gameService'
 
 const router = useRouter()
 const { user, logout } = useAuth0()
-const { currentGameId } = useCurrentGameId()
+const { currentGameId, clearCurrentGame } = useCurrentGameId()
 
 // Dropdown state for user menu
 const showDropdown = ref(false)
@@ -96,6 +97,26 @@ function goToCurrentGame() {
 function goHistory() {
   router.push({ name: 'GameHistory' })
 }
+
+async function handleCancelGame() {
+  if (!currentGameId.value) return
+  const confirmed = window.confirm('Are you sure you want to cancel this game? This cannot be undone.')
+  if (!confirmed) return
+  try {
+    await cancelGame(currentGameId.value)
+    clearCurrentGame()
+    router.push({ name: 'GameSelect' })
+  } catch (e: any) {
+    // If 404, treat as already deleted and clear state
+    if (e?.response?.status === 404) {
+      clearCurrentGame()
+      router.push({ name: 'GameSelect' })
+    } else {
+      alert('Failed to cancel game. Please try again.')
+      console.error('[NavBar] Cancel game error:', e)
+    }
+  }
+}
 </script>
 
 <template>
@@ -115,6 +136,9 @@ function goHistory() {
             <i class="bi bi-clock-history me-1"></i> History
           </button>
           <div v-if="currentGameId" class="badge bg-primary me-3 game-id-link" style="font-size: 1rem; cursor: pointer;" @click="goToCurrentGame">Game ID: {{ currentGameId }}</div>
+          <button v-if="currentGameId" class="btn btn-outline-danger nav-link ms-2" @click="handleCancelGame">
+            <i class="bi bi-x-circle me-1"></i> Cancel Game
+          </button>
         </template>
         <div class="dropdown ms-3" v-if="user?.picture" style="position: relative;">
           <img :src="user.picture" alt="User" width="40" height="40" class="rounded-circle dropdown-toggle" style="cursor:pointer;" @click.stop="toggleDropdown" />
@@ -125,6 +149,9 @@ function goHistory() {
               </button>
               <button v-if="currentGameId" class="dropdown-item" @click="goToCurrentGame">
                 <i class="bi bi-flag me-1"></i> Game ID: {{ currentGameId }}
+              </button>
+              <button v-if="currentGameId" class="dropdown-item text-danger" @click="handleCancelGame">
+                <i class="bi bi-x-circle me-1"></i> Cancel Game
               </button>
               <hr class="dropdown-divider" />
             </template>

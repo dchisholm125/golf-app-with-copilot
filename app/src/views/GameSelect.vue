@@ -14,6 +14,7 @@ const selectedGame = ref('wolf')
 const message = ref('')
 const loading = ref(false)
 const wolfGameState = ref<any>(null)
+const skinValue = ref<number | null>(null)
 
 const games = [
   { value: 'wolf', label: 'Wolf' },
@@ -72,6 +73,9 @@ async function startGame() {
         name: p.name,
         email: p.email,
       })),
+    }
+    if (selectedGame.value === 'skins' && skinValue.value !== null) {
+      payload.skin_value = skinValue.value
     }
     const res = await createGame(payload)
     setCurrentGameId(res.game_id)
@@ -167,6 +171,10 @@ watch(currentGameId, (val) => {
         <select v-model="selectedGame" class="form-select" style="max-width: 200px;">
           <option v-for="game in games" :key="game.value" :value="game.value">{{ game.label }}</option>
         </select>
+      </div>
+      <div class="mb-3" v-if="selectedGame === 'skins'">
+        <label class="form-label">Skin Value (Buy-in per Skin)</label>
+        <input v-model.number="skinValue" type="number" min="0" step="0.01" class="form-control" style="max-width: 200px;" placeholder="Enter skin value ($)" />
       </div>
       <div class="mb-4">
         <button

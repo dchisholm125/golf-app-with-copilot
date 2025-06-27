@@ -8,6 +8,7 @@ import logging
 from dotenv import load_dotenv
 import json
 from fastapi.middleware.cors import CORSMiddleware
+from collections import defaultdict
 
 app = FastAPI()
 
@@ -49,10 +50,16 @@ class PlayerIn(BaseModel):
 class GameCreate(BaseModel):
     game_type: str
     players: List[PlayerIn]
+    skin_value: Optional[float] = None
 
 class GameStateUpdate(BaseModel):
     current_hole: int
     state_json: dict
+
+class SkinsGameState(BaseModel):
+    scores: dict  # {email: [score, ...]}
+    skins: list   # [{hole: int, winner: str, carryover: bool, value: int}, ...]
+    total_winnings: dict  # {email: amount}
 
 @app.get("/users/by-auth0/{auth0_id}")
 def get_user_by_auth0_id(auth0_id: str):
@@ -78,16 +85,17 @@ def create_game(game: GameCreate):
     cursor = db.cursor()
     try:
         logger.info("Inserting new game into games table")
+        # If skins, allow skin_value
+        skin_value = getattr(game, 'skin_value', None)
         cursor.execute(
-            "INSERT INTO games (game_type, is_complete, state_json) VALUES (%s, %s, %s) RETURNING id",
-            (game.game_type, False, json.dumps({}))
+            "INSERT INTO games (game_type, is_complete, state_json, skin_value) VALUES (%s, %s, %s, %s) RETURNING id",
+            (game.game_type, False, json.dumps({}), skin_value)
         )
         game_id = cursor.fetchone()[0]
         logger.info(f"Inserted game with ID: {game_id}")
         # Insert players
         for player in game.players:
             logger.info(f"Processing player: {player}")
-            # Try to find a known user by auth0_id
             user_id = None
             if hasattr(player, 'auth0_id') and player.auth0_id:
                 cursor.execute(
@@ -127,6 +135,19 @@ def update_game_state(game_id: int, state: GameStateUpdate):
     db = get_db()
     cursor = db.cursor()
     try:
+        # For skins, validate state_json structure
+        cursor.execute("SELECT game_type FROM games WHERE id = %s", (game_id,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Game not found.")
+        game_type = row[0]
+        if game_type == 'skins':
+            # Validate state_json for skins
+            try:
+                SkinsGameState(**state.state_json)
+            except Exception as e:
+                logger.error(f"Invalid skins state_json: {e}")
+                raise HTTPException(status_code=400, detail="Invalid skins state_json")
         cursor.execute(
             "UPDATE games SET current_hole = %s, state_json = %s WHERE id = %s AND is_complete = FALSE",
             (state.current_hole, json.dumps(state.state_json), game_id)
@@ -188,9 +209,9 @@ def get_games_won(user_key: str):
                    gp.name AS player_name, gp.email AS player_email
             FROM games g
             JOIN game_players gp ON g.id = gp.game_id
-            WHERE gp.user_id = %s OR gp.email = %s OR gp.name = %s
+            WHERE gp.user_id = %s
             ORDER BY g.completed_at DESC NULLS LAST, g.created_at DESC
-        ''', (user_key, user_key, user_key))
+        ''', (user_key,))
         games = cursor.fetchall()
         logger.info(f"Fetched {len(games)} games for user_key={user_key}")
         won_games = []
@@ -210,6 +231,16 @@ def get_games_won(user_key: str):
                         won_games.append(game)
                 except Exception as e:
                     logger.warning(f"Error parsing state_json for game {game['id']}: {e}", exc_info=True)
+            elif game['game_type'] == 'skins' and game['state_json']:
+                try:
+                    state = game['state_json'] if isinstance(game['state_json'], dict) else json.loads(game['state_json'])
+                    winnings = state.get('total_winnings', {})
+                    max_won = max(winnings.values()) if winnings else None
+                    if winnings and winnings.get(game['player_email'], 0) == max_won:
+                        logger.info(f"User {game['player_email']} won skins game {game['id']}")
+                        won_games.append(game)
+                except Exception as e:
+                    logger.warning(f"Error parsing skins state_json for game {game['id']}: {e}", exc_info=True)
         return {"games": won_games}
     except Exception as e:
         logger.error(f"Error fetching games won: {e}", exc_info=True)
@@ -229,9 +260,9 @@ def get_games_lost(user_key: str):
                    gp.name AS player_name, gp.email AS player_email
             FROM games g
             JOIN game_players gp ON g.id = gp.game_id
-            WHERE gp.user_id = %s OR gp.email = %s OR gp.name = %s
+            WHERE gp.user_id = %s
             ORDER BY g.completed_at DESC NULLS LAST, g.created_at DESC
-        ''', (user_key, user_key, user_key))
+        ''', (user_key,))
         games = cursor.fetchall()
         logger.info(f"Fetched {len(games)} games for user_key={user_key}")
         lost_games = []
@@ -251,6 +282,16 @@ def get_games_lost(user_key: str):
                         lost_games.append(game)
                 except Exception as e:
                     logger.warning(f"Error parsing state_json for game {game['id']}: {e}", exc_info=True)
+            elif game['game_type'] == 'skins' and game['state_json']:
+                try:
+                    state = game['state_json'] if isinstance(game['state_json'], dict) else json.loads(game['state_json'])
+                    winnings = state.get('total_winnings', {})
+                    max_won = max(winnings.values()) if winnings else None
+                    if winnings and winnings.get(game['player_email'], 0) < max_won:
+                        logger.info(f"User {game['player_email']} lost skins game {game['id']}")
+                        lost_games.append(game)
+                except Exception as e:
+                    logger.warning(f"Error parsing skins state_json for game {game['id']}: {e}", exc_info=True)
         return {"games": lost_games}
     except Exception as e:
         logger.error(f"Error fetching games lost: {e}", exc_info=True)
@@ -299,6 +340,90 @@ def get_game_players(game_id: int):
     except Exception as e:
         logger.error(f"Error fetching players for game {game_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to fetch players.")
+    finally:
+        cursor.close()
+        db.close()
+
+@app.get("/games/{game_id}/skins")
+def get_skins_results(game_id: int):
+    """
+    Calculate and return Skins results for a given game.
+    """
+    db = get_db()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Fetch game info
+        cursor.execute("SELECT skin_value, state_json FROM games WHERE id = %s", (game_id,))
+        game_row = cursor.fetchone()
+        if not game_row:
+            raise HTTPException(status_code=404, detail="Game not found.")
+        skin_value = game_row['skin_value'] or 0
+        state_json = game_row['state_json']
+        if state_json and isinstance(state_json, str):
+            state_json = json.loads(state_json)
+        # Expecting state_json to have 'scores': {email: [hole1, hole2, ...]}
+        scores = state_json.get('scores', {})
+        if not scores:
+            raise HTTPException(status_code=400, detail="No scores found for this game.")
+        num_holes = len(next(iter(scores.values())))
+        emails = list(scores.keys())
+        skins = []
+        carryover = 0
+        for h in range(num_holes):
+            hole_scores = {email: scores[email][h] for email in emails}
+            min_score = min(hole_scores.values())
+            winners = [email for email, score in hole_scores.items() if score == min_score]
+            if len(winners) == 1:
+                skins.append({
+                    'hole': h+1,
+                    'winner': winners[0],
+                    'value': skin_value * (carryover + 1)
+                })
+                carryover = 0
+            else:
+                skins.append({
+                    'hole': h+1,
+                    'winner': None,
+                    'value': 0
+                })
+                carryover += 1
+        # Tally total skins and winnings per player
+        player_totals = defaultdict(lambda: {'skins': 0, 'winnings': 0})
+        for skin in skins:
+            if skin['winner']:
+                player_totals[skin['winner']]['skins'] += 1
+                player_totals[skin['winner']]['winnings'] += skin['value']
+        return {
+            'skins': skins,
+            'player_totals': player_totals
+        }
+    except Exception as e:
+        logger.error(f"Error calculating skins: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to calculate skins.")
+    finally:
+        cursor.close()
+        db.close()
+
+@app.delete("/games/{game_id}")
+def delete_game(game_id: int):
+    db = get_db()
+    cursor = db.cursor()
+    try:
+        cursor.execute("SELECT 1 FROM games WHERE id = %s", (game_id,))
+        if cursor.fetchone() is None:
+            logger.warning(f"Attempted to delete non-existent game {game_id}.")
+            raise HTTPException(status_code=404, detail=f"Game {game_id} not found.")
+        cursor.execute("DELETE FROM game_players WHERE game_id = %s", (game_id,))
+        cursor.execute("DELETE FROM games WHERE id = %s", (game_id,))
+        db.commit()
+        logger.info(f"Deleted game {game_id} and its players.")
+        return {"message": f"Game {game_id} deleted."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error deleting game: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to delete game.")
     finally:
         cursor.close()
         db.close()
