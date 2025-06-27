@@ -45,10 +45,10 @@ export async function getPlayersForGame(gameId: number): Promise<Player[]> {
 
 /**
  * Fetches the user's complete game history (won and lost).
- * @param userId The Auth0 user ID
+ * @param userId The internal DB user ID (number)
  * @returns Array of games (won and lost)
  */
-export async function fetchUserGameHistory(userId: string): Promise<any[]> {
+export async function fetchUserGameHistory(userId: number): Promise<any[]> {
   const [won, lost] = await Promise.all([
     api.get(`/users/${userId}/games-won`),
     api.get(`/users/${userId}/games-lost`)

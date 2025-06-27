@@ -3,6 +3,7 @@ import { defineComponent, onMounted, ref, computed } from 'vue'
 import { useCurrentUser } from '../composables/useCurrentUser'
 import { fetchUserGameHistory, getPlayersForGame } from '../services/gameService'
 import { useAuth0 } from '@auth0/auth0-vue'
+import { useDbUser } from '../composables/useDbUser'
 
 export default defineComponent({
   name: 'GameHistory',
@@ -13,10 +14,13 @@ export default defineComponent({
     const { isAuthenticated } = useCurrentUser()
     const { user } = useAuth0()
     const userEmail = computed(() => user.value?.email || '')
+    // Use the new composable
+    const { dbUser, fetchDbUser, loading: dbUserLoading } = useDbUser()
 
     onMounted(async () => {
-      if (isAuthenticated.value && user.value && user.value.sub) {
-        games.value = await fetchUserGameHistory(user.value.sub)
+      await fetchDbUser()
+      if (isAuthenticated.value && dbUser.value?.id) {
+        games.value = await fetchUserGameHistory(dbUser.value.id)
         // For each game, fetch the player list if it's a wolf game
         for (const game of games.value) {
           if (game.type === 'wolf') {
