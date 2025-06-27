@@ -42,3 +42,21 @@ export async function getPlayersForGame(gameId: number): Promise<Player[]> {
   const response = await api.get(`/games/${gameId}/players`)
   return response.data
 }
+
+/**
+ * Fetches the user's complete game history (won and lost).
+ * @param userId The Auth0 user ID
+ * @returns Array of games (won and lost)
+ */
+export async function fetchUserGameHistory(userId: string): Promise<any[]> {
+  const [won, lost] = await Promise.all([
+    api.get(`/users/${userId}/games-won`),
+    api.get(`/users/${userId}/games-lost`)
+  ])
+  // Combine and sort by date descending
+  const allGames = [...(won.data.games || []), ...(lost.data.games || [])]
+  console.log('[gameService] fetchUserGameHistory - won:', won.data.games)
+  console.log('[gameService] fetchUserGameHistory - lost:', lost.data.games)
+  console.log('[gameService] fetchUserGameHistory - allGames:', allGames)
+  return allGames.sort((a, b) => (a.date < b.date ? 1 : -1))
+}

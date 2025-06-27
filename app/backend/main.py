@@ -148,61 +148,70 @@ def read_root():
 
 @app.get("/users/{user_id}/games-won")
 def get_games_won(user_id: str):
-    # Dummy data for UI testing
-    return {
-        "games": [
-            {
-                "id": 1,
-                "date": "2025-06-01",
-                "type": "wolf",
-                "strokes": [4, 5, 3, 4, 5, 4, 4, 3, 5],
-                "points": [1, 2, 0, 1, 2, 1, 1, 0, 2]
-            },
-            {
-                "id": 2,
-                "date": "2025-05-20",
-                "type": "skins",
-                "strokes": [5, 4, 4, 5, 3, 4, 5, 4, 4],
-                "points": [2, 1, 1, 2, 0, 1, 2, 1, 1]
-            },
-            {
-                "id": 3,
-                "date": "2025-05-10",
-                "type": "sixsixsix",
-                "strokes": [],
-                "points": []
-            }
-        ]
-    }
+    db = get_db()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Find all games the user participated in
+        cursor.execute('''
+            SELECT g.id, g.game_type, g.current_hole, g.is_complete, g.state_json, g.completed_at, g.created_at,
+                   gp.name AS player_name, gp.email AS player_email
+            FROM games g
+            JOIN game_players gp ON g.id = gp.game_id
+            WHERE gp.user_id = %s OR gp.email = %s
+            ORDER BY g.completed_at DESC NULLS LAST, g.created_at DESC
+        ''', (user_id, user_id))
+        games = cursor.fetchall()
+        won_games = []
+        for game in games:
+            # Only process wolf games with state_json containing points
+            if game['game_type'] == 'wolf' and game['state_json']:
+                try:
+                    state = game['state_json'] if isinstance(game['state_json'], dict) else json.loads(game['state_json'])
+                    points = state.get('points', {})
+                    # points: {email: [int, int, ...]} or similar
+                    user_points = sum(points.get(game['player_email'], []))
+                    all_scores = [(email, sum(pts)) for email, pts in points.items()]
+                    all_scores.sort(key=lambda x: x[1], reverse=True)
+                    if all_scores and all_scores[0][0] == game['player_email']:
+                        won_games.append(game)
+                except Exception as e:
+                    logger.warning(f"Error parsing state_json for game {game['id']}: {e}")
+        return {"games": won_games}
+    finally:
+        cursor.close()
+        db.close()
 
 @app.get("/users/{user_id}/games-lost")
 def get_games_lost(user_id: str):
-    # Dummy data for UI testing
-    return {
-        "games": [
-            {
-                "id": 4,
-                "date": "2025-06-15",
-                "type": "wolf",
-                "strokes": [5, 6, 4, 5, 6, 5, 5, 4, 6],
-                "points": [0, 1, 0, 0, 1, 0, 0, 1, 0]
-            },
-            {
-                "id": 5,
-                "date": "2025-05-25",
-                "type": "skins",
-                "strokes": [6, 5, 5, 6, 4, 5, 6, 5, 5],
-                "points": [0, 0, 1, 0, 1, 0, 0, 1, 0]
-            },
-            {
-                "id": 6,
-                "date": "2025-05-12",
-                "type": "sixsixsix",
-                "strokes": [],
-                "points": []
-            }
-        ]
-    }
+    db = get_db()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute('''
+            SELECT g.id, g.game_type, g.current_hole, g.is_complete, g.state_json, g.completed_at, g.created_at,
+                   gp.name AS player_name, gp.email AS player_email
+            FROM games g
+            JOIN game_players gp ON g.id = gp.game_id
+            WHERE gp.user_id = %s OR gp.email = %s
+            ORDER BY g.completed_at DESC NULLS LAST, g.created_at DESC
+        ''', (user_id, user_id))
+        games = cursor.fetchall()
+        lost_games = []
+        for game in games:
+            if game['game_type'] == 'wolf' and game['state_json']:
+                try:
+                    state = game['state_json'] if isinstance(game['state_json'], dict) else json.loads(game['state_json'])
+                    points = state.get('points', {})
+                    user_points = sum(points.get(game['player_email'], []))
+                    all_scores = [(email, sum(pts)) for email, pts in points.items()]
+                    all_scores.sort(key=lambda x: x[1])  # Ascending
+                    if all_scores and all_scores[0][0] == game['player_email']:
+                        lost_games.append(game)
+                except Exception as e:
+                    logger.warning(f"Error parsing state_json for game {game['id']}: {e}")
+        return {"games": lost_games}
+    finally:
+        cursor.close()
+        db.close()
 
 @app.patch("/games/{game_id}/complete")
 def mark_game_complete(game_id: int):

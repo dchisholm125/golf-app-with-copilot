@@ -27,6 +27,8 @@ function handleStatCardClick(stat: { title: string }) {
     router.push('/profile/games-won')
   } else if (stat.title === 'Games Lost') {
     router.push('/profile/games-lost')
+  } else if (stat.title === 'Games Played') {
+    router.push('/history')
   }
 }
 

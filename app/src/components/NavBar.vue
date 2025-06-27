@@ -92,6 +92,10 @@ function goToCurrentGame() {
     router.push({ name: 'WolfGame', params: { gameId: currentGameId.value } })
   }
 }
+
+function goHistory() {
+  router.push({ name: 'GameHistory' })
+}
 </script>
 
 <template>
@@ -106,6 +110,9 @@ function goToCurrentGame() {
         <template v-if="!isMobile">
           <button class="btn btn-outline-primary nav-link profile-btn" @click="goProfile">
             <i class="bi bi-person-circle me-1"></i> Profile
+          </button>
+          <button class="btn btn-outline-secondary nav-link ms-2" @click="goHistory">
+            <i class="bi bi-clock-history me-1"></i> History
           </button>
           <div v-if="currentGameId" class="badge bg-primary me-3 game-id-link" style="font-size: 1rem; cursor: pointer;" @click="goToCurrentGame">Game ID: {{ currentGameId }}</div>
         </template>
