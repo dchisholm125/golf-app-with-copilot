@@ -1,72 +1,31 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { useAuth0 } from '@auth0/auth0-vue'
 import { useCurrentGameId } from '../composables/useCurrentGameId'
-import axios from 'axios'
-import { cancelGame } from '../services/gameService'
+import { useNavigation } from '../services/navigationService'
+import { useGameManagement } from '../services/gameManagementService'
+import { useResponsive } from '../composables/useResponsive'
 
-const router = useRouter()
 const { user, logout } = useAuth0()
-const { currentGameId, clearCurrentGame } = useCurrentGameId()
+const { currentGameId } = useCurrentGameId()
+const navigation = useNavigation()
+const gameManagement = useGameManagement()
+const { isMobile } = useResponsive()
 
 // Dropdown state for user menu
 const showDropdown = ref(false)
-const isMobile = ref(false)
 
-function goProfile() {
-  router.push({ name: 'Profile' })
-}
-function goHome() {
-  router.push({ name: 'Profile' })
-}
-function logoutAndRedirect() {
-  logout({ logoutParams: { returnTo: window.location.origin } })
-}
 function toggleDropdown() {
   showDropdown.value = !showDropdown.value
 }
 
-function handleResize() {
-  isMobile.value = window.innerWidth <= 600
+function handleLogout() {
+  logout({ logoutParams: { returnTo: window.location.origin } })
 }
 
-onMounted(async () => {
-  console.log('[NavBar] onMounted: currentGameId', currentGameId.value)
-  // Try to restore game ID from backend or localStorage
-  if (!currentGameId.value) {
-    // Option 1: Check localStorage for last game ID
-    const savedGameId = localStorage.getItem('currentGameId')
-    console.log('[NavBar] Checking localStorage for currentGameId:', savedGameId)
-    if (savedGameId) {
-      // Optionally, verify with backend that this game exists and is in progress
-      try {
-        const res = await axios.get(`/api/games/${savedGameId}/state`)
-        console.log('[NavBar] Backend state for savedGameId:', res.data)
-        if (res.data && res.data.state_json) {
-          currentGameId.value = Number(savedGameId)
-          console.log('[NavBar] Restored currentGameId from backend:', currentGameId.value)
-        }
-      } catch (e) {
-        console.log('[NavBar] Error verifying game with backend:', e)
-        // Not a valid/in-progress game, clear localStorage
-        localStorage.removeItem('currentGameId')
-      }
-    }
-  }
-
-  handleResize()
-  window.addEventListener('resize', handleResize)
-})
-
-watch(currentGameId, (val) => {
-  console.log('[NavBar] currentGameId changed:', val)
-  if (val) {
-    localStorage.setItem('currentGameId', String(val))
-  } else {
-    localStorage.removeItem('currentGameId')
-  }
-})
+function handleCancelGame() {
+  gameManagement.cancelCurrentGame()
+}
 
 // Optional: Close dropdown when clicking outside
 function onClickOutside(event: MouseEvent) {
@@ -76,7 +35,11 @@ function onClickOutside(event: MouseEvent) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // Try to restore game state on mount
+  await gameManagement.restoreGameState()
+  
+  // Add click outside listener
   document.addEventListener('click', onClickOutside)
 })
 
@@ -84,58 +47,37 @@ onMounted(() => {
 import { onBeforeUnmount } from 'vue'
 onBeforeUnmount(() => {
   document.removeEventListener('click', onClickOutside)
-  window.removeEventListener('resize', handleResize)
 })
 
-function goToCurrentGame() {
-  if (currentGameId.value) {
-    // Always navigate to WolfGame for now
-    router.push({ name: 'WolfGame', params: { gameId: currentGameId.value } })
+// Watch for game ID changes and persist to localStorage
+watch(currentGameId, (val) => {
+  if (val) {
+    gameManagement.persistGameId(val)
+  } else {
+    gameManagement.clearPersistedGameId()
   }
-}
-
-function goHistory() {
-  router.push({ name: 'GameHistory' })
-}
-
-async function handleCancelGame() {
-  if (!currentGameId.value) return
-  const confirmed = window.confirm('Are you sure you want to cancel this game? This cannot be undone.')
-  if (!confirmed) return
-  try {
-    await cancelGame(currentGameId.value)
-    clearCurrentGame()
-    router.push({ name: 'GameSelect' })
-  } catch (e: any) {
-    // If 404, treat as already deleted and clear state
-    if (e?.response?.status === 404) {
-      clearCurrentGame()
-      router.push({ name: 'GameSelect' })
-    } else {
-      alert('Failed to cancel game. Please try again.')
-      console.error('[NavBar] Cancel game error:', e)
-    }
-  }
-}
+})
 </script>
 
 <template>
   <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
     <div class="container-fluid justify-content-between align-items-center">
       <div class="d-flex align-items-center flex-grow-1 justify-content-center position-relative">
-        <a class="navbar-brand mx-auto d-flex align-items-center justify-content-center" href="#" @click.prevent="goHome" style="position: absolute; left: 50%; transform: translateX(-50%);">
+        <a class="navbar-brand mx-auto d-flex align-items-center justify-content-center" href="#" @click.prevent="navigation.goToHome" style="position: absolute; left: 50%; transform: translateX(-50%);">
           <img src="/assets/golf-games.png" alt="Logo" height="60" class="me-2 logo-img" />
         </a>
       </div>
       <div class="d-flex align-items-center ms-auto profile-section">
         <template v-if="!isMobile">
-          <button class="btn btn-outline-primary nav-link profile-btn" @click="goProfile">
+          <button class="btn btn-outline-primary nav-link profile-btn" @click="navigation.goToProfile">
             <i class="bi bi-person-circle me-1"></i> Profile
           </button>
-          <button class="btn btn-outline-secondary nav-link ms-2" @click="goHistory">
+          <button class="btn btn-outline-secondary nav-link ms-2" @click="navigation.goToGameHistory">
             <i class="bi bi-clock-history me-1"></i> History
           </button>
-          <div v-if="currentGameId" class="badge bg-primary me-3 game-id-link" style="font-size: 1rem; cursor: pointer;" @click="goToCurrentGame">Game ID: {{ currentGameId }}</div>
+          <div v-if="currentGameId" class="badge bg-primary me-3 game-id-link" style="font-size: 1rem; cursor: pointer;" @click="navigation.goToCurrentGame(currentGameId)">
+            Game ID: {{ currentGameId }}
+          </div>
           <button v-if="currentGameId" class="btn btn-outline-danger nav-link ms-2" @click="handleCancelGame">
             <i class="bi bi-x-circle me-1"></i> Cancel Game
           </button>
@@ -144,10 +86,10 @@ async function handleCancelGame() {
           <img :src="user.picture" alt="User" width="40" height="40" class="rounded-circle dropdown-toggle" style="cursor:pointer;" @click.stop="toggleDropdown" />
           <div id="user-dropdown-menu" class="dropdown-menu dropdown-menu-end show" v-if="showDropdown" style="display:block; position:absolute; top:100%; right:0; min-width: 180px;">
             <template v-if="isMobile">
-              <button class="dropdown-item" @click="goProfile">
+              <button class="dropdown-item" @click="navigation.goToProfile">
                 <i class="bi bi-person-circle me-1"></i> Profile
               </button>
-              <button v-if="currentGameId" class="dropdown-item" @click="goToCurrentGame">
+              <button v-if="currentGameId" class="dropdown-item" @click="navigation.goToCurrentGame(currentGameId)">
                 <i class="bi bi-flag me-1"></i> Game ID: {{ currentGameId }}
               </button>
               <button v-if="currentGameId" class="dropdown-item text-danger" @click="handleCancelGame">
@@ -155,7 +97,7 @@ async function handleCancelGame() {
               </button>
               <hr class="dropdown-divider" />
             </template>
-            <button class="dropdown-item" @click="logoutAndRedirect">Logout</button>
+            <button class="dropdown-item" @click="handleLogout">Logout</button>
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 interface Player {
   name: string
+  email: string
   scores: number[]
 }
 

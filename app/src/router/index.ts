@@ -4,7 +4,7 @@ import Profile from '../views/Profile.vue'
 import GameSelect from '../views/GameSelect.vue'
 import WolfGame from '../views/WolfGame.vue'
 import GameHistory from '../views/GameHistory.vue'
-import SkinsGame from '../views/SkinsGame.vue' // To be created
+import SkinsGame from '../views/SkinsGame.vue'
 // import SixSixSixGame from '../views/SixSixSixGame.vue' // To be created
 import { useAuth0 } from '@auth0/auth0-vue'
 import { watch } from 'vue'
@@ -14,8 +14,8 @@ const routes = [
   { path: '/', name: 'Profile', component: Profile, meta: { requiresAuth: true } },
   { path: '/game-select', name: 'GameSelect', component: GameSelect, meta: { requiresAuth: true } },
   { path: '/wolf/:gameId', name: 'WolfGame', component: WolfGame, meta: { requiresAuth: true, gameType: 'wolf' }, props: true },
-  { path: '/history', name: 'GameHistory', component: GameHistory, meta: { requiresAuth: true } },
   { path: '/skins/:gameId', name: 'SkinsGame', component: SkinsGame, meta: { requiresAuth: true, gameType: 'skins' }, props: true },
+  { path: '/history', name: 'GameHistory', component: GameHistory, meta: { requiresAuth: true } },
   // { path: '/sixsixsix/:gameId', name: 'SixSixSixGame', component: SixSixSixGame, meta: { requiresAuth: true, gameType: 'sixsixsix' }, props: true },
   {
     path: '/profile/games-won',

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { defineProps, onMounted } from 'vue'
-import axios from 'axios'
-import { useCurrentGameId } from '../composables/useCurrentGameId'
+import { useGameManagement } from '../services/gameManagementService'
 
 interface Player {
   name: string
+  email: string
   scores: number[]
 }
 
@@ -14,7 +14,7 @@ const props = defineProps<{
   gameId?: number
 }>()
 
-const { clearCurrentGame } = useCurrentGameId()
+const gameManagement = useGameManagement()
 
 // Calculate total scores and sort for placement
 const playerResults = [...props.players].map(p => ({
@@ -42,12 +42,11 @@ onMounted(() => {
       origin: { x: 0.9, y: 0.95 }
     })
   })
+  
   // Mark game as complete in backend
   if (props.gameId) {
-    axios.patch(`/api/games/${props.gameId}/complete`, { is_complete: true }).catch(() => {})
+    gameManagement.markGameComplete(props.gameId)
   }
-  // Clear current game association for this user
-  clearCurrentGame()
 })
 </script>
 

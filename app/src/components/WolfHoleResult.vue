@@ -3,6 +3,7 @@ import { defineProps, defineEmits, computed } from 'vue'
 
 interface Player {
   name: string
+  email: string
   scores: number[]
 }
 

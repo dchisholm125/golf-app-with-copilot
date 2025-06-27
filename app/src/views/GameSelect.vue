@@ -5,8 +5,10 @@ import { createGame, type GameCreateRequest } from '../services/gameService'
 import { useCurrentUser } from '../composables/useCurrentUser'
 import { useCurrentGameId } from '../composables/useCurrentGameId'
 import { loadGameState } from '../services/gameStateService'
+import { useNavigation } from '../services/navigationService'
 
 const router = useRouter()
+const navigation = useNavigation()
 
 const numPlayers = ref(4)
 const numHoles = ref(18)
@@ -81,11 +83,11 @@ async function startGame() {
     setCurrentGameId(res.game_id)
     // Redirect to the appropriate game route
     if (selectedGame.value === 'wolf') {
-      router.push({ name: 'WolfGame', params: { gameId: res.game_id } })
+      navigation.goToWolfGame(res.game_id)
     } else if (selectedGame.value === 'skins') {
-      // router.push({ name: 'SkinsGame', params: { gameId: res.game_id } })
+      navigation.goToSkinsGame(res.game_id)
     } else if (selectedGame.value === 'sixsixsix') {
-      // router.push({ name: 'SixSixSixGame', params: { gameId: res.game_id } })
+      // navigation.goToSixSixSixGame(res.game_id)
     }
   } catch (err: any) {
     message.value = err?.response?.data?.detail || 'Failed to create game.'

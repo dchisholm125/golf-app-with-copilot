@@ -1,158 +1,266 @@
-<script lang="ts">
-import { defineComponent, ref, computed, watch } from 'vue'
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+import { useSkinsGameLogic } from '../composables/useSkinsGameLogic'
+import { useResponsive } from '../composables/useResponsive'
+import { useCurrentUser } from '../composables/useCurrentUser'
+import GameScoreboard from '../components/GameScoreboard.vue'
+import GameComplete from './GameComplete.vue'
 
-export default defineComponent({
-  name: 'SkinsGame',
-  props: {
-    players: { type: Array, required: true }, // [{ name, email }]
-    holes: { type: Number, default: 18 },
-    skinValue: { type: Number, default: 1 }
-  },
-  emits: ['submit'],
-  setup(props, { emit }) {
-    // scores[playerIdx][holeIdx] = score
-    const scores = ref(Array(props.players.length).fill(null).map(() => Array(props.holes).fill('')))
-    const calculating = ref(false)
-    const error = ref('')
-    const results = ref<any>(null)
+// Use the new Skins game logic composable
+const {
+  loading,
+  error,
+  gameId,
+  currentHole,
+  totalHoles,
+  players,
+  isComplete,
+  gameType,
+  skinsState,
+  playerScores,
+  skinsResults,
+  playerTotals,
+  loadSkinsState,
+  startGame,
+  updateScore,
+  submitHole,
+  completeGame,
+} = useSkinsGameLogic()
 
-    function setScore(playerIdx: number, holeIdx: number, value: string) {
-      scores.value[playerIdx][holeIdx] = value
-    }
+const { isMobile } = useResponsive()
+const { email: currentUserEmail } = useCurrentUser()
 
-    function calculateSkins() {
-      calculating.value = true
-      error.value = ''
-      try {
-        // Calculate per-hole winners and carryovers
-        const skins: any[] = []
-        const winnings: Record<string, number> = {}
-        let carryover = 0
-        for (let h = 0; h < props.holes; h++) {
-          let min = Infinity
-          let winners: number[] = []
-          for (let p = 0; p < props.players.length; p++) {
-            const val = parseInt(scores.value[p][h])
-            if (!isNaN(val)) {
-              if (val < min) {
-                min = val
-                winners = [p]
-              } else if (val === min) {
-                winners.push(p)
-              }
-            }
-          }
-          let skin = {
-            hole: h + 1,
-            winner: null as string | null,
-            carryover: false,
-            value: props.skinValue + carryover
-          }
-          if (winners.length === 1) {
-            const winnerEmail = props.players[winners[0]].email
-            skin.winner = winnerEmail
-            winnings[winnerEmail] = (winnings[winnerEmail] || 0) + skin.value
-            carryover = 0
-          } else {
-            skin.carryover = true
-            carryover += props.skinValue
-          }
-          skins.push(skin)
-        }
-        results.value = { skins, winnings }
-        emit('submit', { scores: scores.value, skins, winnings })
-      } catch (e: any) {
-        error.value = e?.message || 'Calculation error'
-      } finally {
-        calculating.value = false
-      }
-    }
+// Local state for score entry
+const scoreInputs = ref<Record<string, number>>({})
 
-    return { scores, setScore, calculateSkins, calculating, error, results }
+// Initialize score inputs
+function initializeScoreInputs() {
+  scoreInputs.value = {}
+  players.value.forEach(player => {
+    scoreInputs.value[player.email] = player.scores[currentHole.value] || 0
+  })
+}
+
+// Handle score input change
+function handleScoreChange(playerEmail: string, score: number) {
+  scoreInputs.value[playerEmail] = score
+  updateScore(playerEmail, currentHole.value, score)
+}
+
+// Submit current hole
+function handleSubmitHole() {
+  // Validate all scores are entered
+  const allScoresEntered = players.value.every(player => 
+    scoreInputs.value[player.email] !== undefined && scoreInputs.value[player.email] > 0
+  )
+  
+  if (!allScoresEntered) {
+    alert('Please enter scores for all players before submitting.')
+    return
   }
+  
+  submitHole()
+  
+  // Re-initialize inputs for next hole
+  if (!isComplete.value) {
+    initializeScoreInputs()
+  }
+}
+
+// Load game state on mount
+onMounted(async () => {
+  await loadSkinsState()
+  initializeScoreInputs()
 })
 </script>
 
 <template>
-  <div class="skins-game">
-    <h2>Enter Scores for Skins Game</h2>
-    <table class="skins-table">
-      <thead>
-        <tr>
-          <th>Player</th>
-          <th v-for="h in holes" :key="h">Hole {{ h }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="(player, pIdx) in players" :key="player.email">
-          <td>{{ player.name }}</td>
-          <td v-for="h in holes" :key="h">
-            <input type="number" min="1" v-model="scores[pIdx][h-1]" @input="setScore(pIdx, h-1, scores[pIdx][h-1])" />
-          </td>
-        </tr>
-      </tbody>
-    </table>
-    <button @click="calculateSkins" :disabled="calculating">Calculate Skins</button>
-    <div v-if="error" class="error">{{ error }}</div>
-    <div v-if="results">
-      <h3>Results</h3>
-      <table class="skins-results-table">
-        <thead>
-          <tr>
-            <th>Hole</th>
-            <th>Winner</th>
-            <th>Carryover</th>
-            <th>Value</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="skin in results.skins" :key="skin.hole">
-            <td>{{ skin.hole }}</td>
-            <td>{{ skin.winner ? players.find(p => p.email === skin.winner)?.name : 'Carryover' }}</td>
-            <td>{{ skin.carryover ? 'Yes' : 'No' }}</td>
-            <td>{{ skin.value }}</td>
-          </tr>
-        </tbody>
-      </table>
-      <table class="skins-winnings-table">
-        <thead>
-          <tr>
-            <th>Player</th>
-            <th>Total Winnings</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="player in players" :key="player.email">
-            <td>{{ player.name }}</td>
-            <td>{{ results.winnings[player.email] || 0 }}</td>
-          </tr>
-        </tbody>
-      </table>
+  <div class="skins-game-page">
+    <div class="skins-game mt-3 me-5">
+      <h3 class="mb-3">Skins Game</h3>
+      
+      <!-- Loading state -->
+      <div v-if="loading" class="text-center my-5">
+        <div class="spinner-border" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
+      
+      <!-- Error state -->
+      <div v-else-if="error" class="alert alert-danger">
+        {{ error }}
+      </div>
+      
+      <!-- Game content -->
+      <div v-else>
+        <!-- Game not started -->
+        <div v-if="!skinsState.gameStarted">
+          <div class="alert alert-info">
+            This game has not started yet. Please start the game to begin scoring.
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Skin Value (Buy-in per Skin)</label>
+            <input 
+              v-model.number="skinsState.skinValue" 
+              type="number" 
+              min="0" 
+              step="0.01" 
+              class="form-control" 
+              style="max-width: 200px;" 
+              placeholder="Enter skin value ($)" 
+            />
+          </div>
+          <button 
+            class="btn btn-primary" 
+            @click="startGame(skinsState.skinValue)"
+            :disabled="skinsState.skinValue <= 0"
+          >
+            Start Skins Game
+          </button>
+        </div>
+        
+        <!-- Game in progress -->
+        <div v-else-if="!isComplete">
+          <h5>Hole {{ currentHole + 1 }} / {{ totalHoles }}</h5>
+          
+          <!-- Score entry -->
+          <div class="score-entry-section mb-4">
+            <h6>Enter Scores</h6>
+            <div class="row">
+              <div 
+                v-for="player in players" 
+                :key="player.email"
+                class="col-md-6 mb-2"
+              >
+                <label class="form-label">{{ player.name }}</label>
+                <input
+                  v-model.number="scoreInputs[player.email]"
+                  type="number"
+                  min="1"
+                  class="form-control"
+                  @input="handleScoreChange(player.email, scoreInputs[player.email])"
+                  placeholder="Score"
+                />
+              </div>
+            </div>
+            <button 
+              class="btn btn-success mt-3" 
+              @click="handleSubmitHole"
+              :disabled="!players.every(p => scoreInputs[p.email] > 0)"
+            >
+              Submit Hole
+            </button>
+          </div>
+          
+          <!-- Skins results so far -->
+          <div class="skins-results-section mb-4">
+            <h6>Skins Results</h6>
+            <div class="table-responsive">
+              <table class="table table-sm table-bordered">
+                <thead>
+                  <tr>
+                    <th>Hole</th>
+                    <th>Winner</th>
+                    <th>Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="skin in skinsResults" :key="skin.hole">
+                    <td>{{ skin.hole }}</td>
+                    <td>
+                      <span v-if="skin.winner">
+                        {{ players.find(p => p.email === skin.winner)?.name }}
+                      </span>
+                      <span v-else class="text-muted">Carryover</span>
+                    </td>
+                    <td>${{ skin.value.toFixed(2) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          <!-- Player totals -->
+          <div class="player-totals-section mb-4">
+            <h6>Player Totals</h6>
+            <div class="table-responsive">
+              <table class="table table-sm table-bordered">
+                <thead>
+                  <tr>
+                    <th>Player</th>
+                    <th>Skins Won</th>
+                    <th>Total Winnings</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="player in players" :key="player.email">
+                    <td>{{ player.name }}</td>
+                    <td>{{ playerTotals[player.email]?.skins || 0 }}</td>
+                    <td>${{ (playerTotals[player.email]?.winnings || 0).toFixed(2) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          <!-- Scoreboard -->
+          <div class="mt-4">
+            <GameScoreboard 
+              :players="players" 
+              :holesPlayed="currentHole" 
+              title="Scoreboard"
+              :highlightCurrentUser="true"
+              :currentUserEmail="currentUserEmail"
+            />
+          </div>
+        </div>
+        
+        <!-- Game complete -->
+        <div v-else>
+          <GameComplete 
+            :players="players" 
+            :gameType="'skins'" 
+            :gameId="gameId"
+          />
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.skins-game {
-  max-width: 1000px;
-  margin: 2rem auto;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  padding: 2rem;
-}
-.skins-table, .skins-results-table, .skins-winnings-table {
+.skins-game-page {
   width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 1rem;
+  min-height: 100vh;
+  background: #fff;
+  overflow-x: hidden;
 }
-.skins-table th, .skins-table td, .skins-results-table th, .skins-results-table td, .skins-winnings-table th, .skins-winnings-table td {
-  border: 1px solid #ddd;
-  padding: 0.5rem 0.75rem;
-  text-align: center;
+
+.skins-game {
+  max-width: 800px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1rem;
 }
-.error {
-  color: #d9534f;
-  margin-top: 1rem;
+
+.score-entry-section,
+.skins-results-section,
+.player-totals-section {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+@media (max-width: 600px) {
+  .skins-game {
+    max-width: 100%;
+    padding: 0.5rem;
+  }
+  
+  .score-entry-section,
+  .skins-results-section,
+  .player-totals-section {
+    padding: 0.75rem;
+  }
 }
 </style>
