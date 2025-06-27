@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { useSkinsGameLogic } from '../composables/useSkinsGameLogic'
 import { useResponsive } from '../composables/useResponsive'
 import { useCurrentUser } from '../composables/useCurrentUser'
@@ -31,36 +31,50 @@ const { isMobile } = useResponsive()
 const { email: currentUserEmail } = useCurrentUser()
 
 // Local state for score entry
-const scoreInputs = ref<Record<string, number>>({})
+const scoreInputs = ref<Record<string, string>>({})
+
+// Helper to get a unique key for each player
+function getPlayerKey(player: any, idx: number) {
+  return player.email || player.name || `player-${idx}`
+}
 
 // Initialize score inputs
 function initializeScoreInputs() {
   scoreInputs.value = {}
-  players.value.forEach(player => {
-    scoreInputs.value[player.email] = player.scores[currentHole.value] || 0
+  players.value.forEach((player, idx) => {
+    const key = getPlayerKey(player, idx)
+    const val = player.scores[currentHole.value]
+    scoreInputs.value[key] = (typeof val === 'number' && val > 0) ? String(val) : ''
   })
 }
 
 // Handle score input change
-function handleScoreChange(playerEmail: string, score: number) {
-  scoreInputs.value[playerEmail] = score
-  updateScore(playerEmail, currentHole.value, score)
+function handleScoreChange(playerKey: string, score: number | undefined) {
+  scoreInputs.value[playerKey] = score !== undefined ? String(score) : ''
+  // Find the player by key
+  const player = players.value.find((p, idx) => getPlayerKey(p, idx) === playerKey)
+  if (player) {
+    updateScore(player.email, currentHole.value, score ?? 0)
+  }
+}
+
+// Prevent non-numeric input in score fields
+function onScoreInput(e: Event) {
+  const input = e.target as HTMLInputElement
+  input.value = input.value.replace(/[^\d]/g, '')
 }
 
 // Submit current hole
 function handleSubmitHole() {
   // Validate all scores are entered
-  const allScoresEntered = players.value.every(player => 
-    scoreInputs.value[player.email] !== undefined && scoreInputs.value[player.email] > 0
+  const allScoresEntered = players.value.every((p, idx) => 
+    parseInt(scoreInputs.value[getPlayerKey(p, idx)] || '') >= 1
   )
-  
   if (!allScoresEntered) {
     alert('Please enter scores for all players before submitting.')
     return
   }
-  
   submitHole()
-  
   // Re-initialize inputs for next hole
   if (!isComplete.value) {
     initializeScoreInputs()
@@ -71,7 +85,19 @@ function handleSubmitHole() {
 onMounted(async () => {
   await loadSkinsState()
   initializeScoreInputs()
+  console.log('Players:', players.value)
 })
+
+function isFutureHole(hole: number) {
+  return typeof hole === 'number' && hole > Number(currentHole) + 1
+}
+
+const numericSkinsResults = computed<{ hole: number; winner: string | null; value: number }[]>(() =>
+  skinsResults.value.map(skin => ({
+    ...skin,
+    hole: Number(skin.hole)
+  }))
+)
 </script>
 
 <template>
@@ -128,17 +154,17 @@ onMounted(async () => {
             <h6>Enter Scores</h6>
             <div class="row">
               <div 
-                v-for="player in players" 
-                :key="player.email"
+                v-for="(player, idx) in players" 
+                :key="getPlayerKey(player, idx)"
                 class="col-md-6 mb-2"
               >
                 <label class="form-label">{{ player.name }}</label>
                 <input
-                  v-model.number="scoreInputs[player.email]"
+                  v-model="scoreInputs[getPlayerKey(player, idx)]"
                   type="number"
                   min="1"
                   class="form-control"
-                  @input="handleScoreChange(player.email, scoreInputs[player.email])"
+                  @input="onScoreInput($event); handleScoreChange(getPlayerKey(player, idx), scoreInputs[getPlayerKey(player, idx)] ? parseInt(scoreInputs[getPlayerKey(player, idx)]) : undefined)"
                   placeholder="Score"
                 />
               </div>
@@ -146,7 +172,7 @@ onMounted(async () => {
             <button 
               class="btn btn-success mt-3" 
               @click="handleSubmitHole"
-              :disabled="!players.every(p => scoreInputs[p.email] > 0)"
+              :disabled="!players.every((p, idx) => parseInt(scoreInputs[getPlayerKey(p, idx)] || '') >= 1)"
             >
               Submit Hole
             </button>
@@ -165,15 +191,23 @@ onMounted(async () => {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="skin in skinsResults" :key="skin.hole">
+                  <tr v-for="skin in numericSkinsResults" :key="skin.hole">
                     <td>{{ skin.hole }}</td>
                     <td>
-                      <span v-if="skin.winner">
-                        {{ players.find(p => p.email === skin.winner)?.name }}
-                      </span>
-                      <span v-else class="text-muted">Carryover</span>
+                      <template v-if="isFutureHole(skin.hole)">
+                        <!-- Future holes: leave blank -->
+                      </template>
+                      <template v-else>
+                        <span v-if="skin.winner">
+                          {{ players.find(p => p.email === skin.winner)?.name }}
+                        </span>
+                        <span v-else-if="skin.hole <= currentHole + 1" class="text-muted">Carryover</span>
+                      </template>
                     </td>
-                    <td>${{ skin.value.toFixed(2) }}</td>
+                    <td>
+                      <template v-if="isFutureHole(skin.hole)"></template>
+                      <template v-else>${{ skin.value.toFixed(2) }}</template>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -232,7 +266,7 @@ onMounted(async () => {
 .skins-game-page {
   width: 100%;
   min-height: 100vh;
-  background: #fff;
+  background: var(--bg-primary);
   overflow-x: hidden;
 }
 
@@ -246,7 +280,7 @@ onMounted(async () => {
 .score-entry-section,
 .skins-results-section,
 .player-totals-section {
-  background: #f8f9fa;
+  background: var(--bg-secondary);
   border-radius: 8px;
   padding: 1rem;
 }
