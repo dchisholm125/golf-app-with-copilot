@@ -16,7 +16,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://golfleaguegames.netlify.app",  # Production Netlify site
-        "http://localhost:5173"  # Local dev (optional)
+        "http://localhost:5173",                # Local dev
+        "https://golf-app-with-copilot.onrender.com"  # (Optional: allow self)
     ],
     allow_credentials=True,
     allow_methods=["*"],
