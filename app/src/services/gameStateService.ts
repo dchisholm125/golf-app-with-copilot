@@ -8,6 +8,7 @@ const api = axios.create({ baseURL: API_BASE_URL })
 export interface GameState {
   current_hole: number
   state_json: any
+  num_holes?: number
 }
 
 export async function saveGameState(gameId: number, state: GameState) {

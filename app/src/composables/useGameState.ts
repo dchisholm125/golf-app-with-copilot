@@ -78,7 +78,7 @@ export function useGameState() {
       
       gameState.value = {
         currentHole: typeof state.state_json.currentHole === 'number' ? state.state_json.currentHole : 0,
-        totalHoles: state.state_json.numHoles || 18,
+        totalHoles: state.num_holes || 18,
         players: mergedPlayers,
         isComplete: state.state_json.isComplete || false,
         gameType: state.state_json.gameType || '',

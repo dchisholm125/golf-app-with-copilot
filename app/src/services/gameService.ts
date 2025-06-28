@@ -16,6 +16,7 @@ export interface Player {
 export interface GameCreateRequest {
   game_type: string
   players: Player[]
+  num_holes?: number // Number of holes for the game (9 or 18)
   skin_value?: number // Only for Skins games
 }
 

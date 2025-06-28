@@ -75,6 +75,7 @@ async function startGame() {
         name: p.name,
         email: p.email,
       })),
+      num_holes: numHoles.value,
     }
     if (selectedGame.value === 'skins' && skinValue.value !== null) {
       payload.skin_value = skinValue.value

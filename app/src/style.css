@@ -5,9 +5,23 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  /* Light mode colors (default) */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #e9ecef;
+  --text-primary: #212529;
+  --text-secondary: #6c757d;
+  --border-color: #dee2e6;
+  --card-bg: #ffffff;
+  --navbar-bg: #f8f9fa;
+  --btn-primary-bg: #0d6efd;
+  --btn-primary-hover: #0b5ed7;
+  --btn-secondary-bg: #6c757d;
+  --btn-secondary-hover: #5c636a;
+  --link-color: #0d6efd;
+  --link-hover: #0a58ca;
+  --shadow: 0 2px 8px rgba(0,0,0,0.1);
+  --shadow-hover: 0 4px 12px rgba(0,0,0,0.15);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -15,67 +29,413 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+/* Dark mode colors */
+.dark-mode {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d2d2d;
+  --bg-tertiary: #404040;
+  --text-primary: #ffffff;
+  --text-secondary: #b0b0b0;
+  --border-color: #404040;
+  --card-bg: #2d2d2d;
+  --navbar-bg: #2d2d2d;
+  --btn-primary-bg: #0d6efd;
+  --btn-primary-hover: #0b5ed7;
+  --btn-secondary-bg: #6c757d;
+  --btn-secondary-hover: #5c636a;
+  --link-color: #4dabf7;
+  --link-hover: #74c0fc;
+  --shadow: 0 2px 8px rgba(0,0,0,0.3);
+  --shadow-hover: 0 4px 12px rgba(0,0,0,0.4);
 }
 
+/* Apply CSS variables */
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* Navbar dark mode */
+.navbar {
+  background-color: var(--navbar-bg) !important;
+  border-bottom: 1px solid var(--border-color);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+.navbar-light {
+  background-color: var(--navbar-bg) !important;
 }
 
+/* Additional navbar text color overrides */
+.dark-mode .navbar {
+  color: var(--text-primary) !important;
+}
+
+.dark-mode .navbar-light {
+  color: var(--text-primary) !important;
+}
+
+.dark-mode .navbar-light .navbar-brand,
+.dark-mode .navbar-light .navbar-nav .nav-link {
+  color: var(--text-primary) !important;
+}
+
+.dark-mode .navbar-light .navbar-nav .nav-link:hover {
+  color: var(--text-secondary) !important;
+}
+
+.dark-mode .navbar-light .navbar-toggler {
+  border-color: var(--border-color) !important;
+}
+
+.dark-mode .navbar-light .navbar-toggler-icon {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(255, 255, 255, 0.75)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
+}
+
+/* Card dark mode */
 .card {
-  padding: 2em;
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
+/* Button dark mode */
+.btn {
+  transition: all 0.3s ease;
+}
+
+.btn-outline-primary {
+  color: var(--btn-primary-bg);
+  border-color: var(--btn-primary-bg);
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--btn-primary-bg);
+  border-color: var(--btn-primary-hover);
+}
+
+.btn-outline-secondary {
+  color: var(--btn-secondary-bg);
+  border-color: var(--btn-secondary-bg);
+}
+
+.btn-outline-secondary:hover {
+  background-color: var(--btn-secondary-bg);
+  border-color: var(--btn-secondary-hover);
+}
+
+/* Form elements dark mode */
+.form-control {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.form-control:focus {
+  background-color: var(--bg-secondary);
+  border-color: var(--btn-primary-bg);
+  color: var(--text-primary);
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.form-select {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* Table dark mode */
+.table,
+.table th,
+.table td {
+  background-color: var(--card-bg) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+  transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > td,
+.table-striped > tbody > tr:nth-of-type(odd) > th {
+  background-color: var(--bg-tertiary) !important;
+}
+
+.table thead th {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Alert dark mode */
+.alert {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* Badge dark mode */
+.badge {
+  transition: all 0.3s ease;
+}
+
+/* Dropdown dark mode */
+.dropdown-menu {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.dropdown-item {
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.dropdown-item:hover {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+/* Modal dark mode */
+.modal-content {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.modal-header {
+  border-bottom-color: var(--border-color);
+}
+
+.modal-footer {
+  border-top-color: var(--border-color);
+}
+
+/* Links */
+a {
+  color: var(--link-color);
+  text-decoration: inherit;
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: var(--link-hover);
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary);
+  transition: color 0.3s ease;
+}
+
+/* Text colors */
+.text-muted {
+  color: var(--text-secondary) !important;
+}
+
+/* Comprehensive text color overrides for dark mode */
+.dark-mode {
+  /* Ensure all text elements use proper colors */
+  color: var(--text-primary) !important;
+}
+
+.dark-mode * {
+  color: inherit;
+}
+
+.dark-mode h1,
+.dark-mode h2,
+.dark-mode h3,
+.dark-mode h4,
+.dark-mode h5,
+.dark-mode h6 {
+  color: var(--text-primary) !important;
+}
+
+.dark-mode p,
+.dark-mode span,
+.dark-mode div,
+.dark-mode label {
+  color: var(--text-primary) !important;
+}
+
+.dark-mode .text-dark {
+  color: var(--text-primary) !important;
+}
+
+.dark-mode .text-black {
+  color: var(--text-primary) !important;
+}
+
+.dark-mode .text-secondary {
+  color: var(--text-secondary) !important;
+}
+
+.dark-mode .text-muted {
+  color: var(--text-secondary) !important;
+}
+
+.dark-mode .navbar-brand {
+  color: var(--text-primary) !important;
+}
+
+.dark-mode .nav-link {
+  color: var(--text-primary) !important;
+}
+
+.dark-mode .btn {
+  color: inherit;
+}
+
+.dark-mode .btn-outline-primary {
+  color: var(--btn-primary-bg) !important;
+}
+
+.dark-mode .btn-outline-secondary {
+  color: var(--btn-secondary-bg) !important;
+}
+
+.dark-mode .btn-outline-danger {
+  color: #dc3545 !important;
+}
+
+.dark-mode .btn-outline-danger:hover {
+  color: #ffffff !important;
+}
+
+.dark-mode .dropdown-user-name {
+  color: var(--text-secondary) !important;
+}
+
+.dark-mode .badge {
+  color: inherit;
+}
+
+.dark-mode .badge.bg-primary {
+  color: #ffffff !important;
+}
+
+.dark-mode .form-label {
+  color: var(--text-primary) !important;
+}
+
+.dark-mode .form-text {
+  color: var(--text-secondary) !important;
+}
+
+.dark-mode .list-group-item {
+  background-color: var(--card-bg) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+.dark-mode .card-header {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-bottom-color: var(--border-color) !important;
+}
+
+.dark-mode .card-footer {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-top-color: var(--border-color) !important;
+}
+
+/* Shadows */
+.shadow {
+  box-shadow: var(--shadow) !important;
+}
+
+.shadow-hover:hover {
+  box-shadow: var(--shadow-hover) !important;
+}
+
+/* App container */
 #app {
   max-width: 1280px;
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
+  background-color: var(--bg-primary);
+  transition: background-color 0.3s ease;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+/* Game-specific dark mode styles */
+.wolf-game-page,
+.skins-game-page {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.tee-order-wrapper {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.game-history {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.game-history-scorecard {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  #app {
+    padding: 1rem;
   }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+}
+
+/* Force form label, input, select, and placeholder text to use correct color in dark mode */
+.dark-mode label,
+.dark-mode .form-label,
+.dark-mode .form-group label {
+  color: var(--text-primary) !important;
+}
+
+.dark-mode input,
+.dark-mode .form-control,
+.dark-mode select,
+.dark-mode .form-select {
+  color: var(--text-primary) !important;
+  background-color: var(--bg-secondary) !important;
+  border-color: var(--border-color) !important;
+}
+
+.dark-mode input::placeholder,
+.dark-mode .form-control::placeholder {
+  color: var(--text-secondary) !important;
+  opacity: 1 !important;
+}
+
+.dark-mode .form-group,
+.dark-mode .form-row,
+.dark-mode .form-section {
+  color: var(--text-primary) !important;
+}
+
+/* Ensure headings and static text are white in dark mode */
+.dark-mode h1,
+.dark-mode h2,
+.dark-mode h3,
+.dark-mode h4,
+.dark-mode h5,
+.dark-mode h6,
+.dark-mode .form-section-title,
+.dark-mode .section-title {
+  color: var(--text-primary) !important;
 }

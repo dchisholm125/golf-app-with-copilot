@@ -70,7 +70,7 @@ const submitLabel = computed(() => {
           :aria-pressed="holeWinner === wolfPlayer.name"
           :aria-label="wolfTeamLabel + (holeWinner === wolfPlayer.name ? ' selected' : '')"
         >
-          {{ wolfTeamLabel }}
+          🐺
         </button>
         <!-- Tie button -->
         <button

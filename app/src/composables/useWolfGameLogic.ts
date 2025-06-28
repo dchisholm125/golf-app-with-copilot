@@ -1,5 +1,7 @@
 import { ref, computed } from 'vue'
 import { useGameState, type Player } from './useGameState'
+import { useGameManagement } from '../services/gameManagementService'
+import { useNavigation } from '../services/navigationService'
 
 export interface WolfGameState {
   wolfOrder: number[]
@@ -54,9 +56,21 @@ export function useWolfGameLogic() {
     players.value.filter(p => p !== wolfPlayer.value)
   )
   
-  const teeOrder = computed(() => 
-    wolfState.value.wolfOrder.map(idx => players.value[idx])
-  )
+  const teeOrder = computed(() => {
+    // Always ensure we have a valid wolf order
+    if (wolfState.value.wolfOrder.length === 0 && players.value.length > 0) {
+      // Initialize wolf order if it's empty
+      wolfState.value.wolfOrder = Array.from({ length: players.value.length }, (_, i) => i)
+    }
+    
+    // Map indices to players, filtering out any invalid indices
+    const order = wolfState.value.wolfOrder
+      .map(idx => players.value[idx])
+      .filter(player => player !== undefined)
+    
+    // If we still don't have a valid order, fall back to all players
+    return order.length > 0 ? order : players.value
+  })
   
   // Actions
   function startGame() {
@@ -71,8 +85,11 @@ export function useWolfGameLogic() {
       }
     }
     
+    // Ensure we have a valid wolf order
+    const initialWolfOrder = Array.from({ length: players.value.length }, (_, i) => i)
+    
     wolfState.value = {
-      wolfOrder: Array.from({ length: players.value.length }, (_, i) => i),
+      wolfOrder: initialWolfOrder,
       partnerPlayer: null,
       pairingComplete: false,
       loneWolf: false,
@@ -144,9 +161,11 @@ export function useWolfGameLogic() {
     }
     
     // Rotate wolf order
-    const last = wolfState.value.wolfOrder.pop()
-    if (last !== undefined) {
-      wolfState.value.wolfOrder.unshift(last)
+    if (wolfState.value.wolfOrder.length > 0) {
+      const last = wolfState.value.wolfOrder.pop()
+      if (last !== undefined) {
+        wolfState.value.wolfOrder.unshift(last)
+      }
     }
     
     // Reset for next hole
@@ -158,6 +177,8 @@ export function useWolfGameLogic() {
       wolfState.value.holeWinner = ''
     } else {
       advanceHole()
+      // Game is complete, mark it as such
+      completeGame()
     }
     
     saveWolfState()
@@ -174,19 +195,43 @@ export function useWolfGameLogic() {
     })
   }
   
+  function completeGame() {
+    const gameManagement = useGameManagement()
+    const navigation = useNavigation()
+    
+    if (gameId.value) {
+      gameManagement.markGameComplete(gameId.value)
+      navigation.goToGameComplete('wolf', gameId.value)
+    }
+  }
+  
   async function loadWolfState() {
     await loadState()
     
     // Load Wolf-specific state from state_json
     if (gameState.value) {
       const stateJson = gameState.value as any
+      
+      // Ensure we have a valid wolf order
+      let wolfOrder = Array.isArray(stateJson.wolfOrder) ? stateJson.wolfOrder : []
+      
+      // If wolfOrder is empty or doesn't match player count, initialize it
+      if (wolfOrder.length === 0 || wolfOrder.length !== players.value.length) {
+        wolfOrder = Array.from({ length: players.value.length }, (_, i) => i)
+      }
+      
       wolfState.value = {
-        wolfOrder: Array.isArray(stateJson.wolfOrder) ? stateJson.wolfOrder : [],
+        wolfOrder,
         partnerPlayer: stateJson.partnerPlayer || null,
         pairingComplete: stateJson.pairingComplete || false,
         loneWolf: stateJson.loneWolf || false,
         holeWinner: stateJson.holeWinner || '',
         gameStarted: stateJson.gameStarted !== false, // Default to true
+      }
+      
+      // Save the corrected state if we had to fix the wolf order
+      if (wolfOrder !== (Array.isArray(stateJson.wolfOrder) ? stateJson.wolfOrder : [])) {
+        await saveWolfState()
       }
     }
   }
@@ -216,5 +261,6 @@ export function useWolfGameLogic() {
     goLoneWolf,
     setHoleWinner,
     submitHole,
+    completeGame,
   }
 } 

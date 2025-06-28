@@ -35,7 +35,7 @@ const scoreInputs = ref<Record<string, string>>({})
 
 // Helper to get a unique key for each player
 function getPlayerKey(player: any, idx: number) {
-  return player.email || player.name || `player-${idx}`
+  return `player-${idx}`
 }
 
 // Initialize score inputs
@@ -51,10 +51,10 @@ function initializeScoreInputs() {
 // Handle score input change
 function handleScoreChange(playerKey: string, score: number | undefined) {
   scoreInputs.value[playerKey] = score !== undefined ? String(score) : ''
-  // Find the player by key
-  const player = players.value.find((p, idx) => getPlayerKey(p, idx) === playerKey)
-  if (player) {
-    updateScore(player.email, currentHole.value, score ?? 0)
+  // Extract index from key
+  const idx = Number(playerKey.replace('player-', ''))
+  if (!isNaN(idx)) {
+    updateScore(idx, currentHole.value, score ?? 0)
   }
 }
 
@@ -92,7 +92,7 @@ function isFutureHole(hole: number) {
   return typeof hole === 'number' && hole > Number(currentHole) + 1
 }
 
-const numericSkinsResults = computed<{ hole: number; winner: string | null; value: number }[]>(() =>
+const numericSkinsResults = computed<{ hole: number; winner: number | null; value: number }[]>(() =>
   skinsResults.value.map(skin => ({
     ...skin,
     hole: Number(skin.hole)
@@ -198,8 +198,8 @@ const numericSkinsResults = computed<{ hole: number; winner: string | null; valu
                         <!-- Future holes: leave blank -->
                       </template>
                       <template v-else>
-                        <span v-if="skin.winner">
-                          {{ players.find(p => p.email === skin.winner)?.name }}
+                        <span v-if="typeof skin.winner === 'number'">
+                          {{ players[skin.winner]?.name }}
                         </span>
                         <span v-else-if="skin.hole <= currentHole + 1" class="text-muted">Carryover</span>
                       </template>
@@ -247,6 +247,42 @@ const numericSkinsResults = computed<{ hole: number; winner: string | null; valu
               :currentUserEmail="currentUserEmail"
             />
           </div>
+
+          <!-- Visual Debugging Section -->
+          <div class="debug-section mb-4" style="background: #f8f9fa; border: 2px dashed #6c757d; padding: 1rem; border-radius: 8px;">
+            <h6 style="color: #dc3545; font-weight: bold;">🐛 DEBUG INFO</h6>
+            
+            <div class="row">
+              <div class="col-md-6">
+                <strong>Score Inputs (scoreInputs ref):</strong>
+                <pre style="background: #e9ecef; padding: 0.5rem; border-radius: 4px; font-size: 0.8rem;">{{ JSON.stringify(scoreInputs, null, 2) }}</pre>
+              </div>
+              
+              <div class="col-md-6">
+                <strong>Current Hole:</strong> {{ currentHole }}<br>
+                <strong>Players Count:</strong> {{ players.length }}<br>
+                <strong>Game Started:</strong> {{ skinsState.gameStarted }}<br>
+                <strong>Is Complete:</strong> {{ isComplete }}
+              </div>
+            </div>
+            
+            <div class="mt-2">
+              <strong>Player Scores (from players array):</strong>
+              <div v-for="(player, idx) in players" :key="idx" style="background: #e9ecef; padding: 0.5rem; margin: 0.25rem 0; border-radius: 4px; font-size: 0.8rem;">
+                <strong>{{ player.name }} ({{ player.email }}):</strong><br>
+                Key: {{ getPlayerKey(player, idx) }}<br>
+                Current Hole Score: {{ player.scores?.[currentHole] }}<br>
+                All Scores: {{ JSON.stringify(player.scores) }}
+              </div>
+            </div>
+            
+            <div class="mt-2">
+              <strong>Input-to-Player Mapping:</strong>
+              <div v-for="(player, idx) in players" :key="idx" style="background: #fff3cd; padding: 0.5rem; margin: 0.25rem 0; border-radius: 4px; font-size: 0.8rem;">
+                {{ getPlayerKey(player, idx) }} → Input Value: "{{ scoreInputs[getPlayerKey(player, idx)] }}" → Parsed: {{ parseInt(scoreInputs[getPlayerKey(player, idx)] || '') || 'NaN' }}
+              </div>
+            </div>
+          </div>
         </div>
         
         <!-- Game complete -->
@@ -283,6 +319,14 @@ const numericSkinsResults = computed<{ hole: number; winner: string | null; valu
   background: var(--bg-secondary);
   border-radius: 8px;
   padding: 1rem;
+}
+
+.debug-section {
+  background: #f8f9fa;
+  border: 2px dashed #6c757d;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 1rem;
 }
 
 @media (max-width: 600px) {

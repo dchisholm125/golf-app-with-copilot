@@ -52,8 +52,8 @@ onMounted(() => {
 
 <template>
   <div class="game-complete container py-5 text-center">
-    <h1 class="holes-played-display mb-4">Holes Played: {{ players[0]?.scores.length ?? 0 }}</h1>
-    <h2 class="mb-4">Congrats!</h2>
+    <h1 class="mb-4">Game Complete</h1>
+    <h2 class="mb-4">Final Results</h2>
     <div v-if="winnerName" class="winner-name-display mb-3">{{ winnerName }}</div>
     <div id="confetti-cannon"></div>
     <p class="lead mb-4">You've completed a {{ props.gameType }} game.</p>

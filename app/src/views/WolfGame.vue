@@ -120,12 +120,12 @@ onMounted(async () => {
                 </thead>
                 <tbody>
                   <tr 
-                    v-for="(player, idx) in teeOrder" 
+                    v-for="(player, idx) in (teeOrder.length > 0 ? teeOrder : players)" 
                     :key="player.name" 
                     :class="{ 'table-warning': player.name === wolfPlayer.name }"
                   >
                     <td>
-                      <span v-if="idx === teeOrder.length - 1" class="fw-bold text-danger">Wolf</span>
+                      <span v-if="idx === (teeOrder.length > 0 ? teeOrder : players).length - 1" class="fw-bold text-danger">Wolf</span>
                       <span v-else>{{ idx + 1 }}{{ ['st','nd','rd'][idx] || 'th' }}</span>
                     </td>
                     <td>

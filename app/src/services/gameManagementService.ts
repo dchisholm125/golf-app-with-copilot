@@ -1,11 +1,15 @@
 import { useCurrentGameId } from '../composables/useCurrentGameId'
 import { useNavigation } from './navigationService'
-import { cancelGame } from './gameService'
+import { cancelGame, fetchUserGameHistory } from './gameService'
+import { useCurrentUser } from '../composables/useCurrentUser'
+import { useDbUser } from '../composables/useDbUser'
 import axios from 'axios'
 
 export class GameManagementService {
   private currentGameId = useCurrentGameId()
   private navigation = useNavigation()
+  private currentUser = useCurrentUser()
+  private dbUser = useDbUser()
   
   // Game state management
   async restoreGameState() {
@@ -15,7 +19,15 @@ export class GameManagementService {
     try {
       const res = await axios.get(`/api/games/${savedGameId}/state`)
       if (res.data && res.data.state_json) {
+        // Check if the game is completed
+        if (res.data.state_json.isComplete) {
+          // Game is completed, clear the current game
+          this.currentGameId.clearCurrentGame()
+          return false
+        }
+        
         this.currentGameId.setCurrentGameId(Number(savedGameId))
+        this.currentGameId.setCurrentGameType(res.data.game_type || 'wolf')
         return true
       }
     } catch (e) {
@@ -24,6 +36,62 @@ export class GameManagementService {
     }
     
     return false
+  }
+
+  // Get user's most recent active game
+  async getMostRecentActiveGame() {
+    if (!this.currentUser.isAuthenticated.value || !this.dbUser.dbUser.value?.id) {
+      return null
+    }
+
+    try {
+      const games = await fetchUserGameHistory(this.dbUser.dbUser.value.id)
+      
+      // Filter for active games (not completed) and sort by date
+      const activeGames = games
+        .filter(game => !game.is_complete)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      
+      return activeGames.length > 0 ? activeGames[0] : null
+    } catch (error) {
+      console.error('Error fetching recent games:', error)
+      return null
+    }
+  }
+
+  // Update current game to most recent active game
+  async updateToMostRecentGame() {
+    const recentGame = await this.getMostRecentActiveGame()
+    
+    if (recentGame) {
+      this.currentGameId.setCurrentGameId(recentGame.id)
+      this.currentGameId.setCurrentGameType(recentGame.type)
+      return recentGame
+    } else {
+      this.currentGameId.clearCurrentGame()
+      return null
+    }
+  }
+
+  // Smart navigation to current game
+  async goToCurrentGame() {
+    // First try to use the current game ID
+    if (this.currentGameId.currentGameId.value && this.currentGameId.currentGameType.value) {
+      this.navigation.goToCurrentGame(
+        this.currentGameId.currentGameId.value, 
+        this.currentGameId.currentGameType.value
+      )
+      return
+    }
+
+    // If no current game, try to find the most recent active game
+    const recentGame = await this.updateToMostRecentGame()
+    if (recentGame) {
+      this.navigation.goToCurrentGame(recentGame.id, recentGame.type)
+    } else {
+      // No active games, go to game selection
+      this.navigation.goToGameSelect()
+    }
   }
   
   // Game cancellation

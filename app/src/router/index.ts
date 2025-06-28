@@ -5,6 +5,8 @@ import GameSelect from '../views/GameSelect.vue'
 import WolfGame from '../views/WolfGame.vue'
 import GameHistory from '../views/GameHistory.vue'
 import SkinsGame from '../views/SkinsGame.vue'
+import Leaderboards from '../views/Leaderboards.vue'
+import Achievements from '../views/Achievements.vue'
 // import SixSixSixGame from '../views/SixSixSixGame.vue' // To be created
 import { useAuth0 } from '@auth0/auth0-vue'
 import { watch } from 'vue'
@@ -33,6 +35,18 @@ const routes = [
     path: '/game-complete/:gameType/:gameId',
     name: 'GameComplete',
     component: () => import('../views/GameComplete.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/leaderboards',
+    name: 'Leaderboards',
+    component: Leaderboards,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/achievements',
+    name: 'Achievements',
+    component: Achievements,
     meta: { requiresAuth: true },
   },
 ]

@@ -44,9 +44,9 @@ export function useSkinsGameLogic() {
   
   // Computed properties
   const playerScores = computed(() => {
-    const scores: Record<string, number[]> = {}
-    players.value.forEach(player => {
-      scores[player.email] = player.scores
+    const scores: Record<number, number[]> = {}
+    players.value.forEach((player, idx) => {
+      scores[idx] = player.scores
     })
     return scores
   })
@@ -56,10 +56,10 @@ export function useSkinsGameLogic() {
   })
   
   const playerTotals = computed(() => {
-    const totals: Record<string, { skins: number; winnings: number }> = {}
+    const totals: Record<number, { skins: number; winnings: number }> = {}
     
     skinsResults.value.forEach(skin => {
-      if (skin.winner) {
+      if (typeof skin.winner === 'number') {
         if (!totals[skin.winner]) {
           totals[skin.winner] = { skins: 0, winnings: 0 }
         }
@@ -72,6 +72,20 @@ export function useSkinsGameLogic() {
   })
   
   // Actions
+  // Change updateScore to use playerIndex
+  function updateScore(playerIndex: number, holeIndex: number, score: number) {
+    const player = players.value[playerIndex]
+    if (!player) return
+    // Update the player's score in the main state
+    updatePlayerScore(playerIndex, holeIndex, score)
+    // Also update skinsState.scores using index as key
+    if (!skinsState.value.scores[playerIndex]) {
+      skinsState.value.scores[playerIndex] = Array(totalHoles.value).fill(0)
+    }
+    skinsState.value.scores[playerIndex][holeIndex] = score
+  }
+  
+  // Update startGame to initialize scores by index
   function startGame(skinValue: number) {
     skinsState.value = {
       skinValue,
@@ -79,85 +93,40 @@ export function useSkinsGameLogic() {
       skins: [],
       gameStarted: true,
     }
-    
-    // Initialize scores for all players
-    players.value.forEach(player => {
-      skinsState.value.scores[player.email] = Array(totalHoles.value).fill(0)
+    players.value.forEach((player, idx) => {
+      skinsState.value.scores[idx] = Array(totalHoles.value).fill(0)
     })
-    
     saveSkinsState()
   }
   
-  function updateScore(playerEmail: string, holeIndex: number, score: number) {
-    if (!skinsState.value.scores[playerEmail]) {
-      skinsState.value.scores[playerEmail] = Array(totalHoles.value).fill(0)
-    }
-    skinsState.value.scores[playerEmail][holeIndex] = score
-    
-    // Update the player's score in the main state
-    const playerIndex = players.value.findIndex(p => p.email === playerEmail)
-    if (playerIndex !== -1) {
-      updatePlayerScore(playerIndex, holeIndex, score)
-    }
-  }
-  
-  function submitHole() {
-    // Calculate skins for the current hole
-    const currentHoleScores: Record<string, number> = {}
-    players.value.forEach(player => {
-      currentHoleScores[player.email] = player.scores[currentHole.value] || 0
-    })
-    
-    const minScore = Math.min(...Object.values(currentHoleScores))
-    const winners = Object.entries(currentHoleScores)
-      .filter(([_, score]) => score === minScore)
-      .map(([email, _]) => email)
-    
-    const carryover = skinsState.value.skins.filter(s => s.winner === null).length
-    
-    if (winners.length === 1) {
-      // Single winner - award the skin
-      skinsState.value.skins.push({
-        hole: currentHole.value + 1,
-        winner: winners[0],
-        value: skinsState.value.skinValue * (carryover + 1)
-      })
-    } else {
-      // Tie - carry over to next hole
-      skinsState.value.skins.push({
-        hole: currentHole.value + 1,
-        winner: null,
-        value: 0
-      })
-    }
-    
-    // Advance to next hole
-    if (currentHole.value < totalHoles.value - 1) {
-      advanceHole()
-    } else {
-      advanceHole() // This will mark the game as complete
-    }
-    
-    saveSkinsState()
-  }
-  
-  function calculateSkins(scores: Record<string, number[]>, skinValue: number) {
-    const skins: Array<{ hole: number; winner: string | null; value: number }> = []
+  // Update calculateSkins to use index keys
+  function calculateSkins(scores: Record<number, number[]>, skinValue: number) {
+    const skins: Array<{ hole: number; winner: number | null; value: number }> = []
     let carryover = 0
-    
     const numHoles = Math.max(...Object.values(scores).map(s => s.length))
-    
     for (let h = 0; h < numHoles; h++) {
-      const holeScores: Record<string, number> = {}
-      Object.entries(scores).forEach(([email, playerScores]) => {
-        holeScores[email] = playerScores[h] || 0
+      const holeScores: Record<number, number> = {}
+      let allScoresPresent = true
+      Object.entries(scores).forEach(([idx, playerScores]) => {
+        const score = playerScores[h]
+        if (typeof score !== 'number' || score < 1) {
+          allScoresPresent = false
+        }
+        holeScores[Number(idx)] = score || 0
       })
-      
+      if (!allScoresPresent) {
+        skins.push({
+          hole: h + 1,
+          winner: null,
+          value: 0
+        })
+        carryover++
+        continue
+      }
       const minScore = Math.min(...Object.values(holeScores))
       const winners = Object.entries(holeScores)
         .filter(([_, score]) => score === minScore)
-        .map(([email, _]) => email)
-      
+        .map(([idx, _]) => Number(idx))
       if (winners.length === 1) {
         skins.push({
           hole: h + 1,
@@ -174,8 +143,49 @@ export function useSkinsGameLogic() {
         carryover++
       }
     }
-    
     return skins
+  }
+  
+  // Update submitHole to use index keys
+  function submitHole() {
+    const currentHoleScores: Record<number, number> = {}
+    let allScoresPresent = true
+    players.value.forEach((player, idx) => {
+      const score = player.scores[currentHole.value]
+      if (typeof score !== 'number' || score < 1) {
+        allScoresPresent = false
+      }
+      currentHoleScores[idx] = score || 0
+    })
+    if (!allScoresPresent) {
+      alert('Please enter a valid score (>= 1) for all players before submitting.')
+      return
+    }
+    const minScore = Math.min(...Object.values(currentHoleScores))
+    const winners = Object.entries(currentHoleScores)
+      .filter(([_, score]) => score === minScore)
+      .map(([idx, _]) => Number(idx))
+    const carryover = skinsState.value.skins.filter(s => s.winner === null).length
+    if (winners.length === 1) {
+      skinsState.value.skins.push({
+        hole: currentHole.value + 1,
+        winner: winners[0],
+        value: skinsState.value.skinValue * (carryover + 1)
+      })
+    } else {
+      skinsState.value.skins.push({
+        hole: currentHole.value + 1,
+        winner: null,
+        value: 0
+      })
+    }
+    // Advance to next hole
+    if (currentHole.value < totalHoles.value - 1) {
+      advanceHole()
+    } else {
+      advanceHole() // This will mark the game as complete
+    }
+    saveSkinsState()
   }
   
   async function saveSkinsState() {
@@ -233,4 +243,4 @@ export function useSkinsGameLogic() {
     submitHole,
     completeGame,
   }
-} 
+}

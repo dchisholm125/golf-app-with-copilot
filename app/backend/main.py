@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 import json
 from fastapi.middleware.cors import CORSMiddleware
 from collections import defaultdict
+from datetime import datetime, timedelta
+from datetime import datetime, timedelta
 
 app = FastAPI()
 
@@ -50,6 +52,7 @@ class PlayerIn(BaseModel):
 class GameCreate(BaseModel):
     game_type: str
     players: List[PlayerIn]
+    num_holes: Optional[int] = 18  # Default to 18 holes
     skin_value: Optional[float] = None
 
 class GameStateUpdate(BaseModel):
@@ -60,6 +63,30 @@ class SkinsGameState(BaseModel):
     scores: dict  # {email: [score, ...]}
     skins: list   # [{hole: int, winner: str, carryover: bool, value: int}, ...]
     total_winnings: dict  # {email: amount}
+
+class Achievement(BaseModel):
+    id: int
+    name: str
+    description: str
+    icon: str
+    category: str
+    points: int
+    is_secret: bool
+    unlocked_at: Optional[str] = None  # Will be set if user has unlocked it
+
+class UserAchievement(BaseModel):
+    achievement_id: int
+    unlocked_at: str
+    progress_data: Optional[dict] = None
+
+class LeaderboardEntry(BaseModel):
+    user_id: int
+    user_name: str
+    rank: int
+    games_won: int
+    total_games: int
+    win_rate: float
+    total_points: int
 
 @app.get("/users/by-auth0/{auth0_id}")
 def get_user_by_auth0_id(auth0_id: str):
@@ -87,9 +114,10 @@ def create_game(game: GameCreate):
         logger.info("Inserting new game into games table")
         # If skins, allow skin_value
         skin_value = getattr(game, 'skin_value', None)
+        num_holes = getattr(game, 'num_holes', 18)  # Default to 18 holes
         cursor.execute(
-            "INSERT INTO games (game_type, is_complete, state_json, skin_value) VALUES (%s, %s, %s, %s) RETURNING id",
-            (game.game_type, False, json.dumps({}), skin_value)
+            "INSERT INTO games (game_type, is_complete, state_json, skin_value, num_holes) VALUES (%s, %s, %s, %s, %s) RETURNING id",
+            (game.game_type, False, json.dumps({}), skin_value, num_holes)
         )
         game_id = cursor.fetchone()[0]
         logger.info(f"Inserted game with ID: {game_id}")
@@ -172,7 +200,7 @@ def get_game_state(game_id: int):
     db = get_db()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        cursor.execute("SELECT current_hole, state_json, game_type, is_complete FROM games WHERE id = %s", (game_id,))
+        cursor.execute("SELECT current_hole, state_json, game_type, is_complete, num_holes FROM games WHERE id = %s", (game_id,))
         row = cursor.fetchone()
         logger.info(f"Fetched row: {row}")
         if not row:
@@ -185,7 +213,8 @@ def get_game_state(game_id: int):
             "current_hole": row['current_hole'],
             "state_json": state_json,
             "game_type": row['game_type'],
-            "is_complete": row['is_complete']
+            "is_complete": row['is_complete'],
+            "num_holes": row['num_holes']
         }
     except Exception as e:
         logger.error(f"Error fetching game state: {e}", exc_info=True)
@@ -424,6 +453,245 @@ def delete_game(game_id: int):
         db.rollback()
         logger.error(f"Error deleting game: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to delete game.")
+    finally:
+        cursor.close()
+        db.close()
+
+# Achievement and Leaderboard Endpoints
+
+@app.get("/achievements")
+def get_all_achievements():
+    """
+    Get all achievements. Secret achievements are included but marked as such.
+    """
+    db = get_db()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("""
+            SELECT id, name, description, icon, category, points, is_secret
+            FROM achievements 
+            ORDER BY category, points DESC
+        """)
+        achievements = cursor.fetchall()
+        return {"achievements": achievements}
+    except Exception as e:
+        logger.error(f"Error fetching achievements: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch achievements.")
+    finally:
+        cursor.close()
+        db.close()
+
+@app.get("/users/{user_id}/achievements")
+def get_user_achievements(user_id: int):
+    """
+    Get user's unlocked achievements with unlock dates.
+    """
+    db = get_db()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("""
+            SELECT a.id, a.name, a.description, a.icon, a.category, a.points, 
+                   a.is_secret, ua.unlocked_at, ua.progress_data
+            FROM achievements a
+            LEFT JOIN user_achievements ua ON a.id = ua.achievement_id AND ua.user_id = %s
+            ORDER BY a.category, ua.unlocked_at DESC NULLS LAST, a.points DESC
+        """, (user_id,))
+        achievements = cursor.fetchall()
+        
+        # Process achievements to show unlock status
+        processed_achievements = []
+        for achievement in achievements:
+            achievement_data = dict(achievement)
+            achievement_data['unlocked'] = achievement['unlocked_at'] is not None
+            if achievement_data['unlocked']:
+                achievement_data['unlocked_at'] = achievement['unlocked_at'].isoformat() if achievement['unlocked_at'] else None
+            processed_achievements.append(achievement_data)
+            
+        return {"achievements": processed_achievements}
+    except Exception as e:
+        logger.error(f"Error fetching user achievements: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch user achievements.")
+    finally:
+        cursor.close()
+        db.close()
+
+@app.post("/users/{user_id}/achievements/{achievement_id}/unlock")
+def unlock_achievement(user_id: int, achievement_id: int, game_id: Optional[int] = None):
+    """
+    Unlock an achievement for a user. Called internally when conditions are met.
+    """
+    db = get_db()
+    cursor = db.cursor()
+    try:
+        # Check if already unlocked
+        cursor.execute(
+            "SELECT id FROM user_achievements WHERE user_id = %s AND achievement_id = %s",
+            (user_id, achievement_id)
+        )
+        if cursor.fetchone():
+            return {"message": "Achievement already unlocked"}
+            
+        # Unlock the achievement
+        cursor.execute("""
+            INSERT INTO user_achievements (user_id, achievement_id, game_id, unlocked_at)
+            VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
+        """, (user_id, achievement_id, game_id))
+        
+        db.commit()
+        logger.info(f"Unlocked achievement {achievement_id} for user {user_id}")
+        return {"message": "Achievement unlocked!"}
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error unlocking achievement: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to unlock achievement.")
+    finally:
+        cursor.close()
+        db.close()
+
+@app.get("/leaderboards/{leaderboard_type}")
+def get_leaderboard(
+    leaderboard_type: str, 
+    game_type: Optional[str] = None,
+    limit: int = 50
+):
+    """
+    Get leaderboard data. Types: 'weekly', 'monthly', 'all_time'
+    Optional game_type filter: 'wolf', 'skins', etc.
+    """
+    db = get_db()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Calculate date ranges for weekly/monthly
+        now = datetime.now()
+        if leaderboard_type == 'weekly':
+            start_date = now - timedelta(days=7)
+        elif leaderboard_type == 'monthly':
+            start_date = now - timedelta(days=30)
+        elif leaderboard_type == 'all_time':
+            start_date = None
+        else:
+            raise HTTPException(status_code=400, detail="Invalid leaderboard type")
+        
+        # Build query based on parameters
+        base_query = """
+            SELECT 
+                u.id as user_id,
+                u.name as user_name,
+                COUNT(CASE WHEN winner.user_id IS NOT NULL THEN 1 END) as games_won,
+                COUNT(g.id) as total_games,
+                CASE 
+                    WHEN COUNT(g.id) > 0 
+                    THEN ROUND(COUNT(CASE WHEN winner.user_id IS NOT NULL THEN 1 END)::numeric / COUNT(g.id) * 100, 1)
+                    ELSE 0 
+                END as win_rate,
+                COALESCE(SUM(ua_points.points), 0) as total_achievement_points
+            FROM users u
+            LEFT JOIN game_players gp ON u.id = gp.user_id
+            LEFT JOIN games g ON gp.game_id = g.id AND g.is_complete = true
+        """
+        
+        # Add date filter if needed
+        if start_date:
+            base_query += " AND g.completed_at >= %s"
+        
+        # Add game type filter if specified
+        if game_type:
+            base_query += " AND g.game_type = %s"
+        
+        # Add winner calculation (simplified - you may need to adjust based on your win logic)
+        base_query += """
+            LEFT JOIN (
+                SELECT DISTINCT g.id as game_id, winner_gp.user_id
+                FROM games g
+                JOIN game_players winner_gp ON g.id = winner_gp.game_id
+                WHERE g.is_complete = true
+                -- Add your specific win condition logic here based on game type
+            ) winner ON g.id = winner.game_id AND u.id = winner.user_id
+            LEFT JOIN (
+                SELECT ua.user_id, SUM(a.points) as points
+                FROM user_achievements ua
+                JOIN achievements a ON ua.achievement_id = a.id
+                GROUP BY ua.user_id
+            ) ua_points ON u.id = ua_points.user_id
+            GROUP BY u.id, u.name, ua_points.points
+            HAVING COUNT(g.id) > 0
+            ORDER BY games_won DESC, win_rate DESC, total_achievement_points DESC
+            LIMIT %s
+        """
+        
+        # Prepare parameters
+        params = []
+        if start_date:
+            params.append(start_date)
+        if game_type:
+            params.append(game_type)
+        params.append(limit)
+        
+        cursor.execute(base_query, params)
+        leaderboard_data = cursor.fetchall()
+        
+        # Add rankings
+        for i, entry in enumerate(leaderboard_data):
+            entry['rank'] = i + 1
+        
+        return {
+            "leaderboard_type": leaderboard_type,
+            "game_type": game_type,
+            "entries": leaderboard_data,
+            "last_updated": now.isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error fetching leaderboard: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch leaderboard.")
+    finally:
+        cursor.close()
+        db.close()
+
+def check_and_unlock_achievements(user_id: int, game_id: int):
+    """
+    Check if user qualifies for any achievements after completing a game.
+    This should be called after every completed game.
+    """
+    db = get_db()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Get user's game history and stats for achievement checking
+        cursor.execute("""
+            SELECT 
+                COUNT(*) as total_games,
+                COUNT(CASE WHEN g.is_complete THEN 1 END) as completed_games,
+                COUNT(CASE WHEN winner.game_id IS NOT NULL THEN 1 END) as games_won
+            FROM game_players gp
+            JOIN games g ON gp.game_id = g.id
+            LEFT JOIN (
+                -- Simplified win detection - adjust based on your game logic
+                SELECT game_id FROM games WHERE is_complete = true
+            ) winner ON g.id = winner.game_id
+            WHERE gp.user_id = %s
+        """, (user_id,))
+        stats = cursor.fetchone()
+        
+        achievements_to_unlock = []
+        
+        # Check various achievement conditions
+        if stats['completed_games'] == 1:
+            achievements_to_unlock.append(1)  # Getting Started
+        if stats['games_won'] == 1:
+            achievements_to_unlock.append(2)  # First Win
+        if stats['completed_games'] == 100:
+            achievements_to_unlock.append(11)  # Century Club
+            
+        # Unlock achievements
+        for achievement_id in achievements_to_unlock:
+            try:
+                unlock_achievement(user_id, achievement_id, game_id)
+            except:
+                pass  # Achievement may already be unlocked
+                
+        return achievements_to_unlock
+    except Exception as e:
+        logger.error(f"Error checking achievements: {e}", exc_info=True)
+        return []
     finally:
         cursor.close()
         db.close()
