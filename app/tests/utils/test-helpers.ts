@@ -352,6 +352,24 @@ export class TestHelpers {
   }
 
   /**
+   * Navigate to leaderboards
+   */
+  async navigateToLeaderboards() {
+    await this.page.click('text=Leaderboards')
+    await this.page.waitForURL('**/leaderboards')
+    await this.page.waitForLoadState('networkidle')
+  }
+
+  /**
+   * Navigate to achievements
+   */
+  async navigateToAchievements() {
+    await this.page.click('text=Achievements')
+    await this.page.waitForURL('**/achievements')
+    await this.page.waitForLoadState('networkidle')
+  }
+
+  /**
    * Logout from the application
    */
   async logout() {
