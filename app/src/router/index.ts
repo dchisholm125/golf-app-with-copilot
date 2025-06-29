@@ -7,7 +7,6 @@ import GameHistory from '../views/GameHistory.vue'
 import SkinsGame from '../views/SkinsGame.vue'
 import Leaderboards from '../views/Leaderboards.vue'
 import Achievements from '../views/Achievements.vue'
-// import SixSixSixGame from '../views/SixSixSixGame.vue' // To be created
 import { useAuth0 } from '@auth0/auth0-vue'
 import { watch } from 'vue'
 
@@ -47,6 +46,18 @@ const routes = [
     path: '/achievements',
     name: 'Achievements',
     component: Achievements,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/new-round',
+    name: 'NewRound',
+    component: () => import('../../../src/pages/NewRound.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/post-round-entry',
+    name: 'PostRoundEntry',
+    component: () => import('../../../src/pages/PostRoundEntry.vue'),
     meta: { requiresAuth: true },
   },
 ]

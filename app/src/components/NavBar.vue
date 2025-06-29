@@ -138,6 +138,9 @@ watch(currentGameId, (val) => {
           <button class="btn btn-outline-warning nav-link ms-2" @click="$router.push('/achievements')">
             <i class="bi bi-award me-1"></i> Achievements
           </button>
+          <button class="btn btn-outline-info nav-link ms-2" @click="$router.push('/new-round')">
+            <i class="bi bi-plus-circle me-1"></i> New Round
+          </button>
         </template>
         <div class="dropdown ms-3" v-if="user?.picture" style="position: relative;">
           <img :src="user.picture" alt="User" width="40" height="40" class="rounded-circle dropdown-toggle" style="cursor:pointer;" @click.stop="toggleDropdown" data-testid="user-avatar" />
@@ -169,6 +172,9 @@ watch(currentGameId, (val) => {
               </button>
               <button class="dropdown-item" @click="$router.push('/achievements')">
                 <i class="bi bi-award me-1"></i> Achievements
+              </button>
+              <button class="dropdown-item" @click="$router.push('/new-round')">
+                <i class="bi bi-plus-circle me-1"></i> New Round
               </button>
               <hr class="dropdown-divider" />
             </template>
