@@ -48,18 +48,18 @@ const routes = [
     component: Achievements,
     meta: { requiresAuth: true },
   },
-  {
-    path: '/new-round',
-    name: 'NewRound',
-    component: () => import('../../../src/pages/NewRound.vue'),
-    meta: { requiresAuth: true },
-  },
-  {
-    path: '/post-round-entry',
-    name: 'PostRoundEntry',
-    component: () => import('../../../src/pages/PostRoundEntry.vue'),
-    meta: { requiresAuth: true },
-  },
+  // {
+  //   path: '/new-round',
+  //   name: 'NewRound',
+  //   component: () => import('../../../src/pages/NewRound.vue'),
+  //   meta: { requiresAuth: true },
+  // },
+  // {
+  //   path: '/post-round-entry',
+  //   name: 'PostRoundEntry',
+  //   component: () => import('../../../src/pages/PostRoundEntry.vue'),
+  //   meta: { requiresAuth: true },
+  // },
 ]
 
 const router = createRouter({

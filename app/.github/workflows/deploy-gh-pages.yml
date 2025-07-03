@@ -1,0 +1,43 @@
+# GitHub Actions workflow to deploy Vite (Vue 3) app to GitHub Pages
+# Docs: https://vitejs.dev/guide/static-deploy.html#github-pages
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./app
+
+      - name: Build project
+        run: npm run build
+        working-directory: ./app
+        env:
+          VITE_BASE: '/<REPO_NAME>/' # Replace <REPO_NAME> with your repo name
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./app/dist
+          publish_branch: gh-pages
+          cname: ''
+
+# After first deploy, set your Vite config's base: '/<REPO_NAME>/'
+# and update any router base if using history mode.
