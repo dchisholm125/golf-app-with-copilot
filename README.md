@@ -11,6 +11,7 @@ A modern, full-stack golf scoring app for the Wolf game and more, built with Vue
 - **Authentication**: Auth0 integration for secure login.
 - **Cloud-Ready**: Deploy frontend to Netlify, backend to Render, and use managed PostgreSQL.
 - **Newsletter Script**: Send beautiful HTML golf newsletters via Gmail.
+- **Real-time Updates**: WebSocket endpoint broadcasts live game changes.
 - **Thorough Documentation**: All code and APIs are documented for clarity and learning.
 
 ---
