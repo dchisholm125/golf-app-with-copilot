@@ -695,3 +695,20 @@ def check_and_unlock_achievements(user_id: int, game_id: int):
     finally:
         cursor.close()
         db.close()
+
+# WebSocket endpoint for real-time game updates
+from websocket_manager import ConnectionManager
+from fastapi import WebSocket
+
+manager = ConnectionManager()
+
+@app.websocket("/ws/games/{game_id}")
+async def game_updates(websocket: WebSocket, game_id: int):
+    await manager.connect(game_id, websocket)
+    try:
+        while True:
+            data = await websocket.receive_json()
+            await manager.broadcast(game_id, data)
+    except WebSocketDisconnect:
+        manager.disconnect(game_id, websocket)
+
